@@ -23,6 +23,20 @@ def _coerce_number(raw: Any, cast: type, default: Any) -> Any:
         return default
 
 
+def _coerce_bool(raw: Any, default: bool) -> bool:
+    if raw is None:
+        return default
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in {"1", "true", "yes", "on"}:
+            return True
+        if value in {"0", "false", "no", "off"}:
+            return False
+    return default
+
+
 def load_config(path: str | Path | None = None) -> Config:
     cfg_path = Path(path) if path else DEFAULT_CONFIG_PATH
     if not cfg_path.exists():
@@ -35,16 +49,25 @@ def load_config(path: str | Path | None = None) -> Config:
         data = _parse_simple_yaml(cfg_path)
 
     return Config(
-        alert_after_minutes=_coerce_number(data.get("alert_after_minutes"), int, 90),
+        alert_after_minutes=_coerce_number(data.get("alert_after_minutes"), int, 1),
         absence_pause_minutes=_coerce_number(data.get("absence_pause_minutes"), int, 2),
         fps=_coerce_number(data.get("fps"), int, 5),
         object_confidence=_coerce_number(data.get("object_confidence"), float, 0.45),
+        bottle_confidence=_coerce_number(data.get("bottle_confidence"), float, 0.45),
         mouth_expand_ratio=_coerce_number(data.get("mouth_expand_ratio"), float, 0.15),
-        drink_hold_seconds=_coerce_number(data.get("drink_hold_seconds"), float, 2.0),
+        mouth_memory_seconds=_coerce_number(data.get("mouth_memory_seconds"), float, 2.5),
+        drink_hold_seconds=_coerce_number(data.get("drink_hold_seconds"), float, 1.0),
         drink_window_seconds=_coerce_number(data.get("drink_window_seconds"), float, 5.0),
         drink_cooldown_minutes=_coerce_number(data.get("drink_cooldown_minutes"), float, 10.0),
         escalating_minutes=_coerce_number(data.get("escalating_minutes"), float, 3.0),
         model_path=str(data.get("model_path") or "yolov8n.pt"),
+        person_model_path=str(
+            data.get("person_model_path") or data.get("model_path") or "yolov8n.pt"
+        ),
+        bottle_model_path=str(data.get("bottle_model_path") or "models/bottle_v1/weights/best.pt"),
+        bottle_class_id=_coerce_number(data.get("bottle_class_id"), int, 0),
+        use_coco_bottle_fallback=_coerce_bool(data.get("use_coco_bottle_fallback"), True),
+        show_debug_window=_coerce_bool(data.get("show_debug_window"), True),
     )
 
 

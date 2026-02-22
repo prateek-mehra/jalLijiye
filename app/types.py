@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 
 AppMode = Literal["PAUSED_ABSENT", "TRACKING", "ALERT_ESCALATING", "ALERT_CONTINUOUS"]
@@ -45,6 +45,8 @@ class DetectionFrame:
     bottle_boxes: list[Box] = field(default_factory=list)
     face_box: Box | None = None
     mouth_roi: Box | None = None
+    bottle_source: str = "none"
+    frame: Any | None = None
 
 
 @dataclass(slots=True)
@@ -64,13 +66,20 @@ class AppState:
 
 @dataclass(slots=True)
 class Config:
-    alert_after_minutes: int = 90
+    alert_after_minutes: int = 1
     absence_pause_minutes: int = 2
     fps: int = 5
     object_confidence: float = 0.45
+    bottle_confidence: float = 0.45
     mouth_expand_ratio: float = 0.15
-    drink_hold_seconds: float = 2.0
+    mouth_memory_seconds: float = 2.5
+    drink_hold_seconds: float = 1.0
     drink_window_seconds: float = 5.0
     drink_cooldown_minutes: float = 10.0
     escalating_minutes: float = 3.0
     model_path: str = "yolov8n.pt"
+    person_model_path: str = "yolov8n.pt"
+    bottle_model_path: str = "models/bottle_v1/weights/best.pt"
+    bottle_class_id: int = 0
+    use_coco_bottle_fallback: bool = True
+    show_debug_window: bool = True

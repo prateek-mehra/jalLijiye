@@ -52,7 +52,7 @@ class JalLijiyeMenuBar:
             self.quit_item,
         ]
 
-        self.timer = rumps.Timer(self._refresh, 1.0)
+        self.timer = rumps.Timer(self._refresh, 0.2)
         self.timer.start()
 
     def _refresh(self, _: object) -> None:

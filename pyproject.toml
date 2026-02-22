@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "jallijiye"
 version = "0.1.0"
@@ -19,3 +23,6 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]

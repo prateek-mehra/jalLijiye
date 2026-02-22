@@ -48,7 +48,10 @@ def test_state_timeline_with_absence_and_drink_event() -> None:
 
     event = None
     for i in range(10):
-        event = heuristic.update(_drink_frame((96 * 60) + (i * 0.2)))
+        candidate = heuristic.update(_drink_frame((96 * 60) + (i * 0.2)))
+        if candidate is not None:
+            event = candidate
+            break
 
     assert event is not None
     sm.mark_drink(event, now=event.timestamp)

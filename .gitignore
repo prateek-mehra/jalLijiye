@@ -7,3 +7,16 @@ __pycache__/
 logs/*
 !logs/.gitkeep
 yolov8n.pt
+data/raw_videos/
+data/raw_video/
+data/bottle/pink bottle.coco/
+data/bottle/images/raw/
+data/bottle/images/train/
+data/bottle/images/val/
+data/bottle/labels/raw/
+data/bottle/labels/train/
+data/bottle/labels/val/
+data/bottle/labels/*.cache
+models/*
+!models/.gitkeep
+runs/

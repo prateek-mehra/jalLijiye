@@ -86,6 +86,7 @@ class JalLijiyeController:
             self._last_state = self.state_machine.tick(now=now)
             state = self._last_state
 
+        self.detector.pump_debug_window()
         self.alerter.set_mode(state.mode, self.state_machine.alert_started_at)
 
         if state.mode == "PAUSED_ABSENT":
@@ -124,6 +125,16 @@ class JalLijiyeController:
                         "Drink event: source=vision confidence=%.2f",
                         vision_event.confidence,
                     )
+                current_state = self.state_machine.tick(now=frame.timestamp)
+                self._last_state = current_state
+                heuristic_debug = self.drink_heuristic.debug_snapshot()
+
+            self.detector.show_debug_stream(
+                frame=frame,
+                present=stable_present,
+                mode=current_state.mode,
+                debug=heuristic_debug,
+            )
 
 
 
