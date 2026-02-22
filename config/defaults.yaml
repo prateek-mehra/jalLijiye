@@ -1,0 +1,10 @@
+alert_after_minutes: 90
+absence_pause_minutes: 2
+fps: 5
+object_confidence: 0.45
+mouth_expand_ratio: 0.15
+drink_hold_seconds: 2.0
+drink_window_seconds: 5.0
+drink_cooldown_minutes: 10.0
+escalating_minutes: 3.0
+model_path: yolov8n.pt

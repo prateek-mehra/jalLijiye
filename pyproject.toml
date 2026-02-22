@@ -1,0 +1,21 @@
+[project]
+name = "jallijiye"
+version = "0.1.0"
+description = "Mac hydration reminder app with on-device vision detection"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "rumps>=0.4.0",
+  "opencv-python>=4.10.0",
+  "ultralytics>=8.3.0",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
