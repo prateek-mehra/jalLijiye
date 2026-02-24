@@ -16,9 +16,9 @@ Hydration reminder app for macOS that runs as a menu bar process, detects drinki
   - Continuous beeping after 3 minutes unresolved.
 - Live debug stream showing:
   - Person/face/mouth/bottle boxes.
-  - Bottle source (`custom` vs `coco_fallback`).
+  - Bottle source (`custom` vs `none`).
   - Drink-decision telemetry (`contact_seconds`, `drink_detected`, cooldown).
-- Custom bottle model support with optional COCO fallback.
+- Custom bottle model support for your bottle.
 
 ## Setup
 
@@ -52,8 +52,7 @@ Key values:
 - `person_model_path: yolov8n.pt`
 - `bottle_model_path: models/bottle_v1/weights/best.pt`
 - `bottle_class_id: 0`
-- `bottle_confidence: 0.45`
-- `use_coco_bottle_fallback: true`
+- `bottle_confidence: 0.80`
 - `mouth_expand_ratio: 0.15`
 - `mouth_memory_seconds: 2.5`
 - `drink_hold_seconds: 1.0`

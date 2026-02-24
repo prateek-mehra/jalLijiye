@@ -84,8 +84,6 @@ class VisionDetector:
 
             if self._bottle_model is not None:
                 message = "Vision active (custom bottle model)"
-            elif self.config.use_coco_bottle_fallback:
-                message = "Vision active (COCO bottle fallback)"
             else:
                 message = "Vision active (no bottle detector)"
 
@@ -128,8 +126,8 @@ class VisionDetector:
             base_results = self._person_model.predict(
                 frame,
                 verbose=False,
-                conf=min(self.config.object_confidence, self.config.bottle_confidence),
-                classes=[0, 39],  # COCO: person, bottle
+                conf=self.config.object_confidence,
+                classes=[0],  # COCO: person
             )
         except Exception as exc:  # pragma: no cover - runtime safety path
             self.status = DetectorStatus(False, f"Inference failed: {exc}")
@@ -140,13 +138,6 @@ class VisionDetector:
             accepted_classes={0},
             min_confidence=self.config.object_confidence,
             label="person",
-        )
-
-        coco_bottle_boxes = self._extract_boxes(
-            base_results,
-            accepted_classes={39},
-            min_confidence=self.config.bottle_confidence,
-            label="bottle",
         )
 
         custom_bottle_boxes: list[Box] = []
@@ -167,10 +158,8 @@ class VisionDetector:
             except Exception:  # pragma: no cover - runtime safety path
                 custom_bottle_boxes = []
 
-        bottle_boxes, bottle_source = self._select_bottle_boxes(
-            custom_bottle_boxes=custom_bottle_boxes,
-            coco_bottle_boxes=coco_bottle_boxes,
-        )
+        bottle_boxes = custom_bottle_boxes
+        bottle_source = "custom" if bottle_boxes else "none"
 
         face_box, mouth_roi = self._detect_face_and_mouth_roi(frame, person_boxes)
 
@@ -231,17 +220,6 @@ class VisionDetector:
                 )
 
         return parsed
-
-    def _select_bottle_boxes(
-        self,
-        custom_bottle_boxes: list[Box],
-        coco_bottle_boxes: list[Box],
-    ) -> tuple[list[Box], str]:
-        if custom_bottle_boxes:
-            return custom_bottle_boxes, "custom"
-        if self.config.use_coco_bottle_fallback and coco_bottle_boxes:
-            return coco_bottle_boxes, "coco_fallback"
-        return [], "none"
 
     def show_debug_stream(
         self,

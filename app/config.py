@@ -62,7 +62,7 @@ def load_config(path: str | Path | None = None) -> Config:
         ),
         fps=_coerce_number(data.get("fps"), int, 5),
         object_confidence=_coerce_number(data.get("object_confidence"), float, 0.45),
-        bottle_confidence=_coerce_number(data.get("bottle_confidence"), float, 0.45),
+        bottle_confidence=_coerce_number(data.get("bottle_confidence"), float, 0.80),
         mouth_expand_ratio=_coerce_number(data.get("mouth_expand_ratio"), float, 0.15),
         mouth_memory_seconds=_coerce_number(data.get("mouth_memory_seconds"), float, 2.5),
         drink_hold_seconds=_coerce_number(data.get("drink_hold_seconds"), float, 1.0),
@@ -75,7 +75,6 @@ def load_config(path: str | Path | None = None) -> Config:
         ),
         bottle_model_path=str(data.get("bottle_model_path") or "models/bottle_v1/weights/best.pt"),
         bottle_class_id=_coerce_number(data.get("bottle_class_id"), int, 0),
-        use_coco_bottle_fallback=_coerce_bool(data.get("use_coco_bottle_fallback"), True),
         show_debug_window=_coerce_bool(data.get("show_debug_window"), True),
     )
 

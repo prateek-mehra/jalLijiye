@@ -73,7 +73,7 @@ class Config:
     presence_person_center_margin: float = 0.20
     fps: int = 5
     object_confidence: float = 0.45
-    bottle_confidence: float = 0.45
+    bottle_confidence: float = 0.80
     mouth_expand_ratio: float = 0.15
     mouth_memory_seconds: float = 2.5
     drink_hold_seconds: float = 1.0
@@ -84,5 +84,4 @@ class Config:
     person_model_path: str = "yolov8n.pt"
     bottle_model_path: str = "models/bottle_v1/weights/best.pt"
     bottle_class_id: int = 0
-    use_coco_bottle_fallback: bool = True
     show_debug_window: bool = True
