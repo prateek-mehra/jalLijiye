@@ -172,7 +172,7 @@ class VisionDetector:
             coco_bottle_boxes=coco_bottle_boxes,
         )
 
-        face_box, mouth_roi = self._detect_face_and_mouth_roi(frame)
+        face_box, mouth_roi = self._detect_face_and_mouth_roi(frame, person_boxes)
 
         return DetectionFrame(
             timestamp=now,
@@ -344,8 +344,14 @@ class VisionDetector:
             cv2.LINE_AA,
         )
 
-    def _detect_face_and_mouth_roi(self, frame: Any) -> tuple[Box | None, Box | None]:
+    def _detect_face_and_mouth_roi(
+        self,
+        frame: Any,
+        person_boxes: list[Box],
+    ) -> tuple[Box | None, Box | None]:
         if cv2 is None or self._face_detector is None:
+            return None, None
+        if not person_boxes:
             return None, None
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -353,16 +359,44 @@ class VisionDetector:
         if len(faces) == 0:
             return None, None
 
-        x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-        face = Box(float(x), float(y), float(x + w), float(y + h), confidence=1.0, label="face")
+        supported_faces: list[Box] = []
+        for x, y, w, h in faces:
+            candidate = Box(float(x), float(y), float(x + w), float(y + h), confidence=1.0, label="face")
+            if self._face_supported_by_person(candidate, person_boxes):
+                supported_faces.append(candidate)
 
-        mouth_x1 = x + (0.20 * w)
-        mouth_x2 = x + (0.80 * w)
-        mouth_y1 = y + (0.58 * h)
-        mouth_y2 = y + (0.92 * h)
+        if not supported_faces:
+            return None, None
+
+        face = max(supported_faces, key=lambda f: (f.x2 - f.x1) * (f.y2 - f.y1))
+
+        fx, fy, fw, fh = face.x1, face.y1, face.x2 - face.x1, face.y2 - face.y1
+        mouth_x1 = fx + (0.20 * fw)
+        mouth_x2 = fx + (0.80 * fw)
+        mouth_y1 = fy + (0.58 * fh)
+        mouth_y2 = fy + (0.92 * fh)
         mouth = Box(float(mouth_x1), float(mouth_y1), float(mouth_x2), float(mouth_y2), label="mouth")
 
         return face, mouth
+
+    def _face_supported_by_person(self, face: Box, person_boxes: list[Box]) -> bool:
+        fx, fy = face.center()
+        for person in person_boxes:
+            if person.contains_point(fx, fy):
+                return True
+
+            inter_x1 = max(face.x1, person.x1)
+            inter_y1 = max(face.y1, person.y1)
+            inter_x2 = min(face.x2, person.x2)
+            inter_y2 = min(face.y2, person.y2)
+            if inter_x2 <= inter_x1 or inter_y2 <= inter_y1:
+                continue
+            inter_area = (inter_x2 - inter_x1) * (inter_y2 - inter_y1)
+            face_area = max(1.0, (face.x2 - face.x1) * (face.y2 - face.y1))
+            if (inter_area / face_area) >= 0.25:
+                return True
+
+        return False
 
 
 class DrinkHeuristic:

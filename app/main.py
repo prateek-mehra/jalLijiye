@@ -12,7 +12,47 @@ from app.detector import DrinkHeuristic, VisionDetector
 from app.menu_bar import JalLijiyeMenuBar
 from app.presence import PresenceTracker
 from app.state_machine import HydrationStateMachine
-from app.types import DrinkEvent
+from app.types import Box, DetectionFrame, DrinkEvent
+
+
+def is_reliable_person_presence(
+    frame: DetectionFrame,
+    min_area_ratio: float,
+    center_margin: float,
+) -> bool:
+    """
+    Treat person detection as presence only when the box is large and near center.
+    This filters small/background false positives that keep mode in TRACKING.
+    """
+    if not frame.person_boxes or frame.frame is None:
+        return False
+
+    shape = getattr(frame.frame, "shape", None)
+    if not shape or len(shape) < 2:
+        return False
+
+    frame_h = float(shape[0])
+    frame_w = float(shape[1])
+    frame_area = frame_w * frame_h
+    if frame_area <= 0:
+        return False
+
+    best: Box = max(
+        frame.person_boxes,
+        key=lambda b: max(0.0, (b.x2 - b.x1) * (b.y2 - b.y1)),
+    )
+    box_area = max(0.0, (best.x2 - best.x1) * (best.y2 - best.y1))
+    if box_area < (frame_area * min_area_ratio):
+        return False
+
+    cx, cy = best.center()
+    x_margin_px = frame_w * center_margin
+    y_margin_top_px = frame_h * 0.05
+    y_margin_bottom_px = frame_h * 0.05
+    return (
+        x_margin_px <= cx <= (frame_w - x_margin_px)
+        and y_margin_top_px <= cy <= (frame_h - y_margin_bottom_px)
+    )
 
 
 class JalLijiyeController:
@@ -22,7 +62,7 @@ class JalLijiyeController:
         self.presence = PresenceTracker(
             required_present_frames=3,
             history_size=5,
-            absent_after_seconds=self.config.absence_pause_minutes * 60,
+            absent_after_seconds=self.config.presence_absent_after_seconds,
         )
         self.detector = VisionDetector(self.config)
         self.drink_heuristic = DrinkHeuristic(self.config)
@@ -113,7 +153,11 @@ class JalLijiyeController:
                 time.sleep(0.05)
                 continue
 
-            raw_present = bool(frame.face_box or frame.person_boxes)
+            raw_present = is_reliable_person_presence(
+                frame=frame,
+                min_area_ratio=self.config.presence_person_min_area_ratio,
+                center_margin=self.config.presence_person_center_margin,
+            )
             stable_present = self.presence.update(raw_present=raw_present, now=frame.timestamp)
 
             with self._lock:

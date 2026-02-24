@@ -1,5 +1,8 @@
 alert_after_minutes: 1
 absence_pause_minutes: 2
+presence_absent_after_seconds: 10.0
+presence_person_min_area_ratio: 0.06
+presence_person_center_margin: 0.20
 fps: 5
 object_confidence: 0.45
 bottle_confidence: 0.45
@@ -7,7 +10,7 @@ mouth_expand_ratio: 0.15
 mouth_memory_seconds: 2.5
 drink_hold_seconds: 1.0
 drink_window_seconds: 5.0
-drink_cooldown_minutes: 10.0
+drink_cooldown_minutes: 0.0833
 escalating_minutes: 3.0
 model_path: yolov8n.pt
 person_model_path: yolov8n.pt

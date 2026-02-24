@@ -68,6 +68,9 @@ class AppState:
 class Config:
     alert_after_minutes: int = 1
     absence_pause_minutes: int = 2
+    presence_absent_after_seconds: float = 10.0
+    presence_person_min_area_ratio: float = 0.06
+    presence_person_center_margin: float = 0.20
     fps: int = 5
     object_confidence: float = 0.45
     bottle_confidence: float = 0.45
@@ -75,7 +78,7 @@ class Config:
     mouth_memory_seconds: float = 2.5
     drink_hold_seconds: float = 1.0
     drink_window_seconds: float = 5.0
-    drink_cooldown_minutes: float = 10.0
+    drink_cooldown_minutes: float = 0.0833
     escalating_minutes: float = 3.0
     model_path: str = "yolov8n.pt"
     person_model_path: str = "yolov8n.pt"

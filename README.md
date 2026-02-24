@@ -32,6 +32,7 @@ pip install --no-build-isolation -e '.[dev]'
 ## Run
 
 ```bash
+cd /Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye
 source .venv/bin/activate
 python -m app.main
 ```
@@ -45,6 +46,9 @@ Edit `/Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye/config/default
 Key values:
 
 - `alert_after_minutes: 1` (testing profile)
+- `presence_absent_after_seconds: 10.0`
+- `presence_person_min_area_ratio: 0.06`
+- `presence_person_center_margin: 0.20`
 - `person_model_path: yolov8n.pt`
 - `bottle_model_path: models/bottle_v1/weights/best.pt`
 - `bottle_class_id: 0`
@@ -53,6 +57,7 @@ Key values:
 - `mouth_expand_ratio: 0.15`
 - `mouth_memory_seconds: 2.5`
 - `drink_hold_seconds: 1.0`
+- `drink_cooldown_minutes: 0.0833` (5 seconds, testing)
 - `show_debug_window: true`
 
 ## Fast Bottle Training Workflow

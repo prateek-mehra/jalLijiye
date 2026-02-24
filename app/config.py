@@ -51,6 +51,15 @@ def load_config(path: str | Path | None = None) -> Config:
     return Config(
         alert_after_minutes=_coerce_number(data.get("alert_after_minutes"), int, 1),
         absence_pause_minutes=_coerce_number(data.get("absence_pause_minutes"), int, 2),
+        presence_absent_after_seconds=_coerce_number(
+            data.get("presence_absent_after_seconds"), float, 10.0
+        ),
+        presence_person_min_area_ratio=_coerce_number(
+            data.get("presence_person_min_area_ratio"), float, 0.06
+        ),
+        presence_person_center_margin=_coerce_number(
+            data.get("presence_person_center_margin"), float, 0.20
+        ),
         fps=_coerce_number(data.get("fps"), int, 5),
         object_confidence=_coerce_number(data.get("object_confidence"), float, 0.45),
         bottle_confidence=_coerce_number(data.get("bottle_confidence"), float, 0.45),
@@ -58,7 +67,7 @@ def load_config(path: str | Path | None = None) -> Config:
         mouth_memory_seconds=_coerce_number(data.get("mouth_memory_seconds"), float, 2.5),
         drink_hold_seconds=_coerce_number(data.get("drink_hold_seconds"), float, 1.0),
         drink_window_seconds=_coerce_number(data.get("drink_window_seconds"), float, 5.0),
-        drink_cooldown_minutes=_coerce_number(data.get("drink_cooldown_minutes"), float, 10.0),
+        drink_cooldown_minutes=_coerce_number(data.get("drink_cooldown_minutes"), float, 0.0833),
         escalating_minutes=_coerce_number(data.get("escalating_minutes"), float, 3.0),
         model_path=str(data.get("model_path") or "yolov8n.pt"),
         person_model_path=str(
