@@ -73,6 +73,7 @@ class JalLijiyeController:
         self._detector_thread = threading.Thread(target=self._detector_loop, daemon=True)
 
         self.detector_status = "Starting"
+        self.hydration_count = 0
         self._last_state = self.state_machine.snapshot()
 
     def start(self) -> None:
@@ -104,6 +105,7 @@ class JalLijiyeController:
         with self._lock:
             state = self.state_machine.mark_drink(event, now=now)
             self._last_state = state
+            self.hydration_count += 1
         logging.info("Drink event: source=manual")
 
     def pause_30_minutes(self) -> None:
@@ -113,18 +115,12 @@ class JalLijiyeController:
             self._last_state = state
         logging.info("Manual pause enabled for 30 minutes")
 
-    def resume(self) -> None:
-        now = time.time()
-        with self._lock:
-            state = self.state_machine.resume(now=now)
-            self._last_state = state
-        logging.info("Manual pause cleared")
-
-    def get_status(self) -> tuple[str, str, str]:
+    def get_status(self) -> tuple[str, int]:
         now = time.time()
         with self._lock:
             self._last_state = self.state_machine.tick(now=now)
             state = self._last_state
+            hydration_count = self.hydration_count
 
         self.detector.pump_debug_window()
         self.alerter.set_mode(state.mode, self.state_machine.alert_started_at)
@@ -141,8 +137,7 @@ class JalLijiyeController:
         else:
             title = f"Hydration: {int(state.minutes_since_drink)}m"
 
-        detail = state.status_detail or "Tracking"
-        return title, detail, self.detector_status
+        return title, hydration_count
 
     def _detector_loop(self) -> None:
         while not self._stop.is_set():
@@ -165,6 +160,7 @@ class JalLijiyeController:
                 vision_event = self.drink_heuristic.update(frame)
                 if vision_event is not None:
                     self.state_machine.mark_drink(vision_event, now=frame.timestamp)
+                    self.hydration_count += 1
                     logging.info(
                         "Drink event: source=vision confidence=%.2f",
                         vision_event.confidence,
@@ -197,7 +193,6 @@ def run() -> None:
         get_status=controller.get_status,
         on_mark_drink=controller.mark_manual_drink,
         on_pause=controller.pause_30_minutes,
-        on_resume=controller.resume,
         on_quit=controller.stop,
     )
     menu.run()

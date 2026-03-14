@@ -8,7 +8,7 @@ except Exception:  # pragma: no cover - optional runtime dependency
     rumps = None
 
 
-StatusProvider = Callable[[], tuple[str, str, str]]
+StatusProvider = Callable[[], tuple[str, int]]
 Action = Callable[[], None]
 
 
@@ -18,7 +18,6 @@ class JalLijiyeMenuBar:
         get_status: StatusProvider,
         on_mark_drink: Action,
         on_pause: Action,
-        on_resume: Action,
         on_quit: Action,
     ) -> None:
         if rumps is None:
@@ -27,27 +26,20 @@ class JalLijiyeMenuBar:
         self._get_status = get_status
         self._on_mark_drink = on_mark_drink
         self._on_pause = on_pause
-        self._on_resume = on_resume
         self._on_quit = on_quit
 
-        self.app = rumps.App("JalLijiye", title="H2O")
+        self.app = rumps.App("JalLijiye", title="H2O", quit_button=None)
 
-        self.status_item = rumps.MenuItem("Hydration: starting")
-        self.detail_item = rumps.MenuItem("Status: Initializing")
-        self.camera_item = rumps.MenuItem("Camera: Unknown")
+        self.count_item = rumps.MenuItem("Hydrations Today: 0")
         self.mark_item = rumps.MenuItem("Mark Drink Now", callback=self._mark_drink)
         self.pause_item = rumps.MenuItem("Pause 30m", callback=self._pause)
-        self.resume_item = rumps.MenuItem("Resume", callback=self._resume)
         self.quit_item = rumps.MenuItem("Quit", callback=self._quit)
 
         self.app.menu = [
-            self.status_item,
-            self.detail_item,
-            self.camera_item,
+            self.count_item,
             None,
             self.mark_item,
             self.pause_item,
-            self.resume_item,
             None,
             self.quit_item,
         ]
@@ -56,10 +48,8 @@ class JalLijiyeMenuBar:
         self.timer.start()
 
     def _refresh(self, _: object) -> None:
-        title, detail, camera = self._get_status()
-        self.status_item.title = title
-        self.detail_item.title = f"Status: {detail}"
-        self.camera_item.title = f"Camera: {camera}"
+        title, hydration_count = self._get_status()
+        self.count_item.title = f"Hydrations Today: {hydration_count}"
 
         if title.startswith("ALERT"):
             self.app.title = "ALRT"
@@ -73,9 +63,6 @@ class JalLijiyeMenuBar:
 
     def _pause(self, _: object) -> None:
         self._on_pause()
-
-    def _resume(self, _: object) -> None:
-        self._on_resume()
 
     def _quit(self, _: object) -> None:
         self._on_quit()
