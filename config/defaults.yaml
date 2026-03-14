@@ -1,4 +1,5 @@
-alert_after_minutes: 1
+alert_after_minutes: 2.0
+daily_hydration_goal: 8
 absence_pause_minutes: 2
 presence_absent_after_seconds: 10.0
 presence_person_min_area_ratio: 0.06

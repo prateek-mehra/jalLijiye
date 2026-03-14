@@ -66,7 +66,8 @@ class AppState:
 
 @dataclass(slots=True)
 class Config:
-    alert_after_minutes: int = 1
+    alert_after_minutes: float = 2.0
+    daily_hydration_goal: int = 8
     absence_pause_minutes: int = 2
     presence_absent_after_seconds: float = 10.0
     presence_person_min_area_ratio: float = 0.06

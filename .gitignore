@@ -7,6 +7,7 @@ __pycache__/
 .DS_Store
 logs/*
 !logs/.gitkeep
+dist/
 yolov8n.pt
 data/raw_videos/
 data/raw_video/

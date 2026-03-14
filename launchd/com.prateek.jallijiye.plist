@@ -20,7 +20,7 @@
     <true/>
 
     <key>KeepAlive</key>
-    <true/>
+    <false/>
 
     <key>StandardOutPath</key>
     <string>/Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye/logs/jallijiye.out.log</string>

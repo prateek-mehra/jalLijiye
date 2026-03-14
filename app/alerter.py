@@ -8,7 +8,7 @@ from app.types import AppMode
 
 
 class Alerter:
-    def __init__(self, sound_path: str = "/System/Library/Sounds/Basso.aiff") -> None:
+    def __init__(self, sound_path: str = "/System/Library/Sounds/Bottle.aiff") -> None:
         self.sound_path = sound_path
         self._mode: AppMode | None = None
         self._alert_started_at: float | None = None
@@ -43,7 +43,6 @@ class Alerter:
                 timeout=2.0,
             )
         except (FileNotFoundError, subprocess.SubprocessError):
-            # Terminal bell fallback if afplay is unavailable.
             print("\a", end="", flush=True)
 
     def _worker(self) -> None:

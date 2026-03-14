@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
+import subprocess
 import signal
 import threading
 import time
 
 from app.alerter import Alerter
 from app.config import load_config
-from app.detector import DrinkHeuristic, VisionDetector
 from app.menu_bar import JalLijiyeMenuBar
+from app.paths import ensure_logs_dir
 from app.presence import PresenceTracker
 from app.state_machine import HydrationStateMachine
 from app.types import Box, DetectionFrame, DrinkEvent
@@ -57,6 +59,8 @@ def is_reliable_person_presence(
 
 class JalLijiyeController:
     def __init__(self) -> None:
+        from app.detector import DrinkHeuristic, VisionDetector
+
         self.config = load_config()
         self.state_machine = HydrationStateMachine(self.config)
         self.presence = PresenceTracker(
@@ -77,11 +81,11 @@ class JalLijiyeController:
         self._last_state = self.state_machine.snapshot()
 
     def start(self) -> None:
-        os.makedirs("logs", exist_ok=True)
+        log_dir = ensure_logs_dir()
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s %(levelname)s %(message)s",
-            handlers=[logging.FileHandler("logs/events.log"), logging.StreamHandler()],
+            handlers=[logging.FileHandler(log_dir / "events.log"), logging.StreamHandler()],
         )
 
         logging.info("JalLijiye starting")
@@ -99,6 +103,10 @@ class JalLijiyeController:
         self.detector.close()
         logging.info("JalLijiye stopped")
 
+    def quit_app(self) -> None:
+        self._stop_launch_agent_for_session()
+        self.stop()
+
     def mark_manual_drink(self) -> None:
         now = time.time()
         event = DrinkEvent(timestamp=now, source="manual", confidence=1.0)
@@ -115,29 +123,28 @@ class JalLijiyeController:
             self._last_state = state
         logging.info("Manual pause enabled for 30 minutes")
 
-    def get_status(self) -> tuple[str, int]:
+    def get_status(self) -> tuple[str, str]:
         now = time.time()
         with self._lock:
             self._last_state = self.state_machine.tick(now=now)
             state = self._last_state
             hydration_count = self.hydration_count
+            hydration_goal = self.config.daily_hydration_goal
 
         self.detector.pump_debug_window()
         self.alerter.set_mode(state.mode, self.state_machine.alert_started_at)
 
-        if state.mode == "PAUSED_ABSENT":
-            if state.status_detail == "Manual pause":
-                title = "Paused (Manual)"
-            else:
-                title = "Paused (Away)"
-        elif state.mode == "ALERT_ESCALATING":
-            title = "ALERT: Drink water"
-        elif state.mode == "ALERT_CONTINUOUS":
-            title = "ALERT: Drink NOW"
+        progress_title = f"Hydration: {hydration_count}/{hydration_goal}"
+        remaining_minutes = max(0.0, self.config.alert_after_minutes - state.minutes_since_drink)
+        if remaining_minutes <= 0.0:
+            countdown_title = "Drink right now"
+        elif remaining_minutes < 1.0:
+            countdown_title = "Drink after: <1m"
         else:
-            title = f"Hydration: {int(state.minutes_since_drink)}m"
+            countdown_title = f"Drink after: {math.ceil(remaining_minutes)}m"
 
-        return title, hydration_count
+        alternating_title = progress_title if int(now) % 6 < 3 else countdown_title
+        return alternating_title, progress_title
 
     def _detector_loop(self) -> None:
         while not self._stop.is_set():
@@ -176,6 +183,19 @@ class JalLijiyeController:
                 debug=heuristic_debug,
             )
 
+    def _stop_launch_agent_for_session(self) -> None:
+        label = os.environ.get("JAL_LAUNCH_LABEL", "com.prateek.jallijiye")
+        uid = os.getuid()
+        commands = [
+            ["launchctl", "bootout", f"gui/{uid}/{label}"],
+            ["pkill", "-f", "run_jallijiye.sh"],
+        ]
+        for command in commands:
+            try:
+                subprocess.run(command, check=False, capture_output=True)
+            except Exception:
+                continue
+
 
 
 def run() -> None:
@@ -193,7 +213,7 @@ def run() -> None:
         get_status=controller.get_status,
         on_mark_drink=controller.mark_manual_drink,
         on_pause=controller.pause_30_minutes,
-        on_quit=controller.stop,
+        on_quit=controller.quit_app,
     )
     menu.run()
 

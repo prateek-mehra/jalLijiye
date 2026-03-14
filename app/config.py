@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from app.paths import resolve_resource_path, resource_root
 from app.types import Config
 
 try:
@@ -11,7 +12,7 @@ except Exception:  # pragma: no cover - optional runtime dependency
     yaml = None
 
 
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "defaults.yaml"
+DEFAULT_CONFIG_PATH = resource_root() / "config" / "defaults.yaml"
 
 
 def _coerce_number(raw: Any, cast: type, default: Any) -> Any:
@@ -48,8 +49,9 @@ def load_config(path: str | Path | None = None) -> Config:
     else:
         data = _parse_simple_yaml(cfg_path)
 
-    return Config(
-        alert_after_minutes=_coerce_number(data.get("alert_after_minutes"), int, 1),
+    config = Config(
+        alert_after_minutes=_coerce_number(data.get("alert_after_minutes"), float, 2.0),
+        daily_hydration_goal=_coerce_number(data.get("daily_hydration_goal"), int, 8),
         absence_pause_minutes=_coerce_number(data.get("absence_pause_minutes"), int, 2),
         presence_absent_after_seconds=_coerce_number(
             data.get("presence_absent_after_seconds"), float, 10.0
@@ -69,14 +71,19 @@ def load_config(path: str | Path | None = None) -> Config:
         drink_window_seconds=_coerce_number(data.get("drink_window_seconds"), float, 5.0),
         drink_cooldown_minutes=_coerce_number(data.get("drink_cooldown_minutes"), float, 0.0833),
         escalating_minutes=_coerce_number(data.get("escalating_minutes"), float, 3.0),
-        model_path=str(data.get("model_path") or "yolov8n.pt"),
+        model_path=str(resolve_resource_path(str(data.get("model_path") or "yolov8n.pt"))),
         person_model_path=str(
-            data.get("person_model_path") or data.get("model_path") or "yolov8n.pt"
+            resolve_resource_path(
+                str(data.get("person_model_path") or data.get("model_path") or "yolov8n.pt")
+            )
         ),
-        bottle_model_path=str(data.get("bottle_model_path") or "models/bottle_v3/weights/best.pt"),
+        bottle_model_path=str(
+            resolve_resource_path(str(data.get("bottle_model_path") or "models/bottle_v3/weights/best.pt"))
+        ),
         bottle_class_id=_coerce_number(data.get("bottle_class_id"), int, 0),
         show_debug_window=_coerce_bool(data.get("show_debug_window"), True),
     )
+    return config
 
 
 def _parse_simple_yaml(path: Path) -> dict[str, str]:

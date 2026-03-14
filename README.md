@@ -39,6 +39,19 @@ python -m app.main
 
 Grant Camera permission on first launch.
 
+## Build macOS App
+
+Build a proper `.app` bundle for menu bar startup on macOS:
+
+```bash
+cd /Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye
+chmod +x scripts/build_macos_app.sh
+./scripts/build_macos_app.sh
+```
+
+Expected output:
+- `dist/JalLijiye.app`
+
 ## Config
 
 Edit `/Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye/config/defaults.yaml`.
@@ -102,18 +115,39 @@ source .venv/bin/activate
 pytest -q
 ```
 
-## Launch at Login (launchd)
+## Launch at Login (Recommended)
 
-1. Ensure logs directory exists:
+Use the macOS autostart script.
+
+Preferred flow:
+- build `dist/JalLijiye.app`
+- autostart launches the app bundle at login
+
+Fallback flow:
+- if the app bundle does not exist yet, the script falls back to the NoSlouchBench-style hidden Terminal runner
+
+Install and start:
 
 ```bash
-mkdir -p /Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye/logs
+cd /Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye
+chmod +x scripts/autostart_macos.sh
+./scripts/autostart_macos.sh install
 ```
 
-2. Copy plist and load agent:
+Check status:
 
 ```bash
-cp /Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye/launchd/com.prateek.jallijiye.plist ~/Library/LaunchAgents/
-launchctl unload ~/Library/LaunchAgents/com.prateek.jallijiye.plist 2>/dev/null || true
-launchctl load ~/Library/LaunchAgents/com.prateek.jallijiye.plist
+./scripts/autostart_macos.sh status
+```
+
+Stop:
+
+```bash
+./scripts/autostart_macos.sh stop
+```
+
+Uninstall:
+
+```bash
+./scripts/autostart_macos.sh uninstall
 ```

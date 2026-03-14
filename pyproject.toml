@@ -19,6 +19,9 @@ dependencies = [
 dev = [
   "pytest>=8.0.0",
 ]
+macapp = [
+  "py2app>=0.28.8",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
