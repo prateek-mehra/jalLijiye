@@ -50,7 +50,7 @@ Key values:
 - `presence_person_min_area_ratio: 0.06`
 - `presence_person_center_margin: 0.20`
 - `person_model_path: yolov8n.pt`
-- `bottle_model_path: models/bottle_v1/weights/best.pt`
+- `bottle_model_path: models/bottle_v3/weights/best.pt`
 - `bottle_class_id: 0`
 - `bottle_confidence: 0.80`
 - `mouth_expand_ratio: 0.15`

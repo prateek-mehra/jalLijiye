@@ -14,6 +14,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out-root", default="data/bottle")
     p.add_argument("--train-ratio", type=float, default=0.8)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument(
+        "--require-non-empty-labels",
+        action="store_true",
+        help="Only include images whose YOLO label file contains at least one box",
+    )
     return p.parse_args()
 
 
@@ -41,8 +46,11 @@ def main() -> None:
     pairs: list[tuple[Path, Path]] = []
     for img in images:
         lbl = labels_raw / f"{img.stem}.txt"
-        if lbl.exists():
-            pairs.append((img, lbl))
+        if not lbl.exists():
+            continue
+        if args.require_non_empty_labels and not lbl.read_text(encoding="utf-8").strip():
+            continue
+        pairs.append((img, lbl))
 
     if not pairs:
         print("[ERROR] no matching labels found for images")

@@ -14,6 +14,6 @@ drink_cooldown_minutes: 0.0833
 escalating_minutes: 3.0
 model_path: yolov8n.pt
 person_model_path: yolov8n.pt
-bottle_model_path: models/bottle_v1/weights/best.pt
+bottle_model_path: models/bottle_v3/weights/best.pt
 bottle_class_id: 0
 show_debug_window: true

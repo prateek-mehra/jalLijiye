@@ -82,6 +82,6 @@ class Config:
     escalating_minutes: float = 3.0
     model_path: str = "yolov8n.pt"
     person_model_path: str = "yolov8n.pt"
-    bottle_model_path: str = "models/bottle_v1/weights/best.pt"
+    bottle_model_path: str = "models/bottle_v3/weights/best.pt"
     bottle_class_id: int = 0
     show_debug_window: bool = True

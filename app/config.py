@@ -73,7 +73,7 @@ def load_config(path: str | Path | None = None) -> Config:
         person_model_path=str(
             data.get("person_model_path") or data.get("model_path") or "yolov8n.pt"
         ),
-        bottle_model_path=str(data.get("bottle_model_path") or "models/bottle_v1/weights/best.pt"),
+        bottle_model_path=str(data.get("bottle_model_path") or "models/bottle_v3/weights/best.pt"),
         bottle_class_id=_coerce_number(data.get("bottle_class_id"), int, 0),
         show_debug_window=_coerce_bool(data.get("show_debug_window"), True),
     )
