@@ -74,7 +74,7 @@ class JalLijiyeMenuBar:
         self.app.run()
 
     def _apply_title(self, title: str) -> None:
-        if title.startswith("Drink after:") or title == "Drink right now":
+        if title == "Drink water" or title.startswith("Next check in:"):
             if self._set_countdown_badge_title(title):
                 return
 
@@ -128,9 +128,7 @@ class JalLijiyeMenuBar:
     def _countdown_color(self, title: str):  # type: ignore[no-untyped-def]
         if AppKit is None:
             return None
-        if title == "Drink right now" or "<1m" in title:
-            return AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.84, 0.16, 0.16, 1.0)
-        if "<1m" in title:
+        if title == "Drink water" or "<1m" in title:
             return AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.84, 0.16, 0.16, 1.0)
 
         match = re.search(r"(\d+)m", title)

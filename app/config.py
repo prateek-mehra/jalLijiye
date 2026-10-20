@@ -50,6 +50,21 @@ def load_config(path: str | Path | None = None) -> Config:
         data = _parse_simple_yaml(cfg_path)
 
     config = Config(
+        reminder_interval_minutes=_coerce_number(
+            data.get("reminder_interval_minutes"), float, 30.0
+        ),
+        detection_window_seconds=_coerce_number(
+            data.get("detection_window_seconds"), float, 60.0
+        ),
+        detection_snooze_minutes=_coerce_number(
+            data.get("detection_snooze_minutes"), float, 10.0
+        ),
+        bottle_detection_window_frames=_coerce_number(
+            data.get("bottle_detection_window_frames"), int, 10
+        ),
+        bottle_detection_threshold=_coerce_number(
+            data.get("bottle_detection_threshold"), float, 0.5
+        ),
         alert_after_minutes=_coerce_number(data.get("alert_after_minutes"), float, 2.0),
         daily_hydration_goal=_coerce_number(data.get("daily_hydration_goal"), int, 8),
         absence_pause_minutes=_coerce_number(data.get("absence_pause_minutes"), int, 2),

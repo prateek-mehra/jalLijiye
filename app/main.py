@@ -12,9 +12,8 @@ from app.alerter import Alerter
 from app.config import load_config
 from app.menu_bar import JalLijiyeMenuBar
 from app.paths import ensure_logs_dir
-from app.presence import PresenceTracker
-from app.state_machine import HydrationStateMachine
-from app.types import Box, DetectionFrame, DrinkEvent
+from app.reminder_scheduler import ReminderScheduler
+from app.types import Box, DetectionFrame
 
 
 def is_reliable_person_presence(
@@ -59,26 +58,20 @@ def is_reliable_person_presence(
 
 class JalLijiyeController:
     def __init__(self) -> None:
-        from app.detector import DrinkHeuristic, VisionDetector
+        from app.detector import BottleOnlyDetector
 
         self.config = load_config()
-        self.state_machine = HydrationStateMachine(self.config)
-        self.presence = PresenceTracker(
-            required_present_frames=3,
-            history_size=5,
-            absent_after_seconds=self.config.presence_absent_after_seconds,
-        )
-        self.detector = VisionDetector(self.config)
-        self.drink_heuristic = DrinkHeuristic(self.config)
+        self.scheduler = ReminderScheduler(self.config, started_at=time.monotonic())
+        self.detector = BottleOnlyDetector(self.config)
         self.alerter = Alerter()
 
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._detector_thread = threading.Thread(target=self._detector_loop, daemon=True)
+        self._active_alert_started_at: float | None = None
 
         self.detector_status = "Starting"
         self.hydration_count = 0
-        self._last_state = self.state_machine.snapshot()
 
     def start(self) -> None:
         log_dir = ensure_logs_dir()
@@ -90,10 +83,19 @@ class JalLijiyeController:
 
         logging.info("JalLijiye starting")
 
-        self.detector.start()
-        self.detector_status = self.detector.status.message
         self.alerter.start()
+        self.detector_status = "Waiting for scheduled bottle check"
         self._detector_thread.start()
+        logging.info(
+            "Scheduled bottle checks enabled: interval=%.1f min, window=%.1f sec, "
+            "snooze=%.1f min, detector=%d fps, threshold=%d/%d frames",
+            self.config.reminder_interval_minutes,
+            self.config.detection_window_seconds,
+            self.config.detection_snooze_minutes,
+            self.config.fps,
+            self.scheduler.required_hits,
+            self.scheduler.window_frames,
+        )
 
     def stop(self) -> None:
         self._stop.set()
@@ -108,80 +110,101 @@ class JalLijiyeController:
         self.stop()
 
     def mark_manual_drink(self) -> None:
-        now = time.time()
-        event = DrinkEvent(timestamp=now, source="manual", confidence=1.0)
         with self._lock:
-            state = self.state_machine.mark_drink(event, now=now)
-            self._last_state = state
+            self.scheduler.mark_completed(now=time.monotonic())
             self.hydration_count += 1
+            self._active_alert_started_at = None
         logging.info("Drink event: source=manual")
 
     def pause_30_minutes(self) -> None:
-        now = time.time()
         with self._lock:
-            state = self.state_machine.pause_for(30, now=now)
-            self._last_state = state
+            self.scheduler.pause_for(30, now=time.monotonic())
+            self._active_alert_started_at = None
         logging.info("Manual pause enabled for 30 minutes")
 
     def get_status(self) -> tuple[str, str]:
-        now = time.time()
         with self._lock:
-            self._last_state = self.state_machine.tick(now=now)
-            state = self._last_state
+            snapshot = self.scheduler.snapshot(now=time.monotonic())
             hydration_count = self.hydration_count
             hydration_goal = self.config.daily_hydration_goal
+            alert_started_at = self._active_alert_started_at
 
-        self.detector.pump_debug_window()
-        self.alerter.set_mode(state.mode, self.state_machine.alert_started_at)
+        if snapshot.mode in ("MONITORING", "SNOOZED"):
+            title = "Drink water"
+        else:
+            remaining_seconds = snapshot.seconds_until_next_action
+            remaining_minutes = math.ceil(remaining_seconds / 60.0)
+            if remaining_seconds <= 0:
+                title = "Next check starting"
+            elif remaining_seconds < 60:
+                title = "Next check in: <1m"
+            else:
+                title = f"Next check in: {remaining_minutes}m"
+
+        alert_mode = "ALERT_ESCALATING" if snapshot.mode == "MONITORING" else "TRACKING"
+        self.alerter.set_mode(
+            alert_mode,
+            alert_started_at if snapshot.mode == "MONITORING" else None,
+        )
 
         progress_title = f"Hydration: {hydration_count}/{hydration_goal}"
-        remaining_minutes = max(0.0, self.config.alert_after_minutes - state.minutes_since_drink)
-        if remaining_minutes <= 0.0:
-            countdown_title = "Drink right now"
-        elif remaining_minutes < 1.0:
-            countdown_title = "Drink after: <1m"
-        else:
-            countdown_title = f"Drink after: {math.ceil(remaining_minutes)}m"
-
-        alternating_title = progress_title if int(now) % 6 < 3 else countdown_title
-        return alternating_title, progress_title
+        return title, progress_title
 
     def _detector_loop(self) -> None:
+        detector_active = False
         while not self._stop.is_set():
-            frame = self.detector.read_frame()
+            now = time.monotonic()
+            with self._lock:
+                transition = self.scheduler.advance(now)
+                mode = self.scheduler.mode
 
-            if frame is None:
-                self.detector_status = self.detector.status.message
-                time.sleep(0.05)
+            if transition == "start":
+                self.detector.start()
+                detector_active = True
+                with self._lock:
+                    self._active_alert_started_at = time.time()
+                    self.detector_status = self.detector.status.message
+                logging.info("Bottle check window started")
                 continue
 
-            raw_present = is_reliable_person_presence(
-                frame=frame,
-                min_area_ratio=self.config.presence_person_min_area_ratio,
-                center_margin=self.config.presence_person_center_margin,
-            )
-            stable_present = self.presence.update(raw_present=raw_present, now=frame.timestamp)
+            if transition == "timeout":
+                self.detector.close()
+                detector_active = False
+                with self._lock:
+                    self._active_alert_started_at = None
+                logging.info(
+                    "Bottle threshold not met in check window; snoozing for %.1f minutes",
+                    self.config.detection_snooze_minutes,
+                )
+                continue
 
+            if mode == "MONITORING":
+                detected = self.detector.read_bottle_detection()
+                if detected is not None:
+                    with self._lock:
+                        result = self.scheduler.observe_bottle(detected, time.monotonic())
+                        if result == "success":
+                            self.hydration_count += 1
+                            self._active_alert_started_at = None
+                        mode = self.scheduler.mode
+
+                    if result == "success":
+                        self.detector.close()
+                        detector_active = False
+                        logging.info("Bottle detection threshold met; next check scheduled")
+
+                if mode != "MONITORING" and detector_active:
+                    self.detector.close()
+                    detector_active = False
+                time.sleep(0.01 if self.detector.status.available else 0.05)
+                continue
+
+            if detector_active:
+                self.detector.close()
+                detector_active = False
             with self._lock:
-                self.state_machine.set_presence(stable_present, now=frame.timestamp)
-                vision_event = self.drink_heuristic.update(frame)
-                if vision_event is not None:
-                    self.state_machine.mark_drink(vision_event, now=frame.timestamp)
-                    self.hydration_count += 1
-                    logging.info(
-                        "Drink event: source=vision confidence=%.2f",
-                        vision_event.confidence,
-                    )
-                current_state = self.state_machine.tick(now=frame.timestamp)
-                self._last_state = current_state
-                heuristic_debug = self.drink_heuristic.debug_snapshot()
-
-            self.detector.show_debug_stream(
-                frame=frame,
-                present=stable_present,
-                mode=current_state.mode,
-                debug=heuristic_debug,
-            )
+                self._active_alert_started_at = None
+            time.sleep(0.2)
 
     def _stop_launch_agent_for_session(self) -> None:
         label = os.environ.get("JAL_LAUNCH_LABEL", "com.prateek.jallijiye")

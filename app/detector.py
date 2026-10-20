@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import gc
+import logging
 import time
 from collections import deque
 from dataclasses import dataclass
@@ -9,15 +11,45 @@ from typing import Any
 
 from app.types import AppMode, Box, Config, DetectionFrame, DrinkEvent
 
-try:
-    import cv2  # type: ignore
-except Exception:  # pragma: no cover - optional runtime dependency
-    cv2 = None
+cv2: Any | None = None
+YOLO: Any | None = None
+torch: Any | None = None
 
-try:
-    from ultralytics import YOLO  # type: ignore
-except Exception:  # pragma: no cover - optional runtime dependency
-    YOLO = None
+
+def _load_runtime_dependencies() -> None:
+    """Import camera and ML runtimes only when a scheduled check begins."""
+    global cv2, YOLO, torch
+    if cv2 is None:
+        try:
+            import cv2 as cv2_module  # type: ignore
+
+            cv2 = cv2_module
+        except Exception:  # pragma: no cover - optional runtime dependency
+            pass
+    if YOLO is None:
+        try:
+            from ultralytics import YOLO as yolo_class  # type: ignore
+
+            YOLO = yolo_class
+        except Exception:  # pragma: no cover - optional runtime dependency
+            pass
+    if torch is None:
+        try:
+            import torch as torch_module  # type: ignore
+
+            torch = torch_module
+        except Exception:  # pragma: no cover - optional runtime dependency
+            pass
+
+
+def _select_inference_device() -> str:
+    """Use Apple Metal when available; otherwise keep inference on CPU."""
+    try:
+        if torch is not None and torch.backends.mps.is_available():
+            return "mps"
+    except Exception:
+        pass
+    return "cpu"
 
 
 @dataclass(slots=True)
@@ -36,6 +68,124 @@ class DrinkHeuristicDebug:
     drink_detected: bool
 
 
+class BottleOnlyDetector:
+    """Starts camera and bottle inference only for an active check window."""
+
+    def __init__(self, config: Config) -> None:
+        self.config = config
+        self._cap: Any | None = None
+        self._model: Any | None = None
+        self._inference_device = "cpu"
+        self._last_frame_ts = 0.0
+        self.status = DetectorStatus(False, "Waiting for next bottle check")
+
+    def start(self) -> None:
+        self.close()
+        _load_runtime_dependencies()
+        if cv2 is None:
+            self.status = DetectorStatus(False, "OpenCV unavailable; bottle check cannot run")
+            return
+        if YOLO is None:
+            self.status = DetectorStatus(False, "Ultralytics unavailable; bottle check cannot run")
+            return
+
+        try:
+            self._cap = cv2.VideoCapture(0)
+            if not self._cap or not self._cap.isOpened():
+                self.close()
+                self.status = DetectorStatus(False, "Camera unavailable; bottle check cannot run")
+                return
+
+            bottle_path = Path(self.config.bottle_model_path)
+            if not bottle_path.exists():
+                self.close()
+                self.status = DetectorStatus(False, f"Bottle model missing: {bottle_path}")
+                return
+
+            self._model = YOLO(str(bottle_path))
+            self._inference_device = _select_inference_device()
+            self._last_frame_ts = 0.0
+            self.status = DetectorStatus(True, f"Bottle check active; device={self._inference_device}")
+            logging.info("Bottle check started; inference device=%s", self._inference_device)
+        except Exception as exc:  # pragma: no cover - runtime safety path
+            self.close()
+            self.status = DetectorStatus(False, f"Bottle detector start failed: {exc}")
+            logging.exception("Bottle detector failed to start")
+
+    def read_bottle_detection(self) -> bool | None:
+        if not self.status.available or cv2 is None or self._cap is None or self._model is None:
+            return None
+
+        now = time.monotonic()
+        min_interval = 1.0 / max(1, self.config.fps)
+        if now - self._last_frame_ts < min_interval:
+            return None
+
+        ok, frame = self._cap.read()
+        self._last_frame_ts = now
+        if not ok:
+            self.close()
+            self.status = DetectorStatus(False, "Camera read failed during bottle check")
+            return None
+
+        try:
+            results = self._predict(
+                frame,
+                conf=self.config.bottle_confidence,
+                classes=[self.config.bottle_class_id],
+            )
+        except Exception as exc:  # pragma: no cover - runtime safety path
+            self.close()
+            self.status = DetectorStatus(False, f"Bottle inference failed: {exc}")
+            logging.exception("Bottle inference failed")
+            return None
+
+        for result in results or []:
+            for box in getattr(result, "boxes", []) or []:
+                try:
+                    class_id = int(float(box.cls[0]))
+                    confidence = float(box.conf[0])
+                except (AttributeError, IndexError, TypeError, ValueError):
+                    continue
+                if (
+                    class_id == self.config.bottle_class_id
+                    and confidence >= self.config.bottle_confidence
+                ):
+                    return True
+        return False
+
+    def _predict(self, frame: Any, **options: Any) -> Any:
+        try:
+            return self._model.predict(
+                frame,
+                verbose=False,
+                device=self._inference_device,
+                **options,
+            )
+        except Exception:
+            if self._inference_device != "mps":
+                raise
+
+            logging.exception("MPS bottle inference failed; retrying with CPU")
+            self._inference_device = "cpu"
+            self.status = DetectorStatus(True, "Bottle check active; using CPU fallback")
+            return self._model.predict(frame, verbose=False, device="cpu", **options)
+
+    def close(self) -> None:
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+        self._model = None
+        if torch is not None and self._inference_device == "mps":
+            try:
+                torch.mps.empty_cache()
+            except Exception:
+                pass
+        self._inference_device = "cpu"
+        self.status = DetectorStatus(False, "Bottle detector stopped")
+        gc.collect()
+
+
 class VisionDetector:
     """Webcam detector for person, bottle, and approximate mouth ROI."""
 
@@ -44,6 +194,7 @@ class VisionDetector:
         self._cap: Any | None = None
         self._person_model: Any | None = None
         self._bottle_model: Any | None = None
+        self._inference_device = _select_inference_device()
         self._face_detector: Any | None = None
         self._last_frame_ts: float = 0.0
         self._window_name = "JalLijiye Debug Stream"
@@ -53,6 +204,8 @@ class VisionDetector:
         self.status = DetectorStatus(available=False, message="Initializing")
 
     def start(self) -> None:
+        _load_runtime_dependencies()
+        self._inference_device = _select_inference_device()
         if cv2 is None:
             self.status = DetectorStatus(False, "OpenCV not installed; manual mode only")
             return
@@ -90,7 +243,9 @@ class VisionDetector:
             if bottle_model_error:
                 message = f"{message}; {bottle_model_error}"
 
+            message = f"{message}; inference device={self._inference_device}"
             self.status = DetectorStatus(True, message)
+            logging.info("Vision inference device: %s", self._inference_device)
         except Exception as exc:  # pragma: no cover - runtime safety path
             self.status = DetectorStatus(False, f"Detector init failed: {exc}")
             self.close()
@@ -123,9 +278,9 @@ class VisionDetector:
             return None
 
         try:
-            base_results = self._person_model.predict(
+            base_results = self._predict(
+                self._person_model,
                 frame,
-                verbose=False,
                 conf=self.config.object_confidence,
                 classes=[0],  # COCO: person
             )
@@ -143,9 +298,9 @@ class VisionDetector:
         custom_bottle_boxes: list[Box] = []
         if self._bottle_model is not None:
             try:
-                custom_results = self._bottle_model.predict(
+                custom_results = self._predict(
+                    self._bottle_model,
                     frame,
-                    verbose=False,
                     conf=self.config.bottle_confidence,
                     classes=[self.config.bottle_class_id],
                 )
@@ -172,6 +327,27 @@ class VisionDetector:
             bottle_source=bottle_source,
             frame=frame,
         )
+
+    def _predict(self, model: Any, frame: Any, **options: Any) -> Any:
+        try:
+            return model.predict(
+                frame,
+                verbose=False,
+                device=self._inference_device,
+                **options,
+            )
+        except Exception:
+            if self._inference_device != "mps":
+                raise
+
+            logging.exception("MPS inference failed; retrying with CPU")
+            self._inference_device = "cpu"
+            self.status = DetectorStatus(
+                self.status.available,
+                f"{self.status.message}; MPS failed, using CPU",
+            )
+            logging.warning("Falling back to CPU inference")
+            return model.predict(frame, verbose=False, device="cpu", **options)
 
     def _extract_boxes(
         self,

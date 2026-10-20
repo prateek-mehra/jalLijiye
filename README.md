@@ -1,24 +1,15 @@
 # JalLijiye
 
-Hydration reminder app for macOS that runs as a menu bar process, detects drinking events using on-device computer vision, and alerts when the no-drink threshold is crossed.
+Hydration reminder app for macOS that runs in the menu bar and periodically prompts the user to drink water. During each reminder window, it runs only the custom bottle detector.
 
 ## Features
 
-- Menu bar app with status and quick actions.
-- Hybrid trigger model:
-  - Vision-based drink detection (`person/face + bottle near mouth`).
-  - Manual fallback (`Mark Drink Now`).
-- Presence-aware timer:
-  - Auto-pauses when you are away.
-  - Resumes when you return.
-- Escalating alerts:
-  - Beep every 30s in escalation window.
-  - Continuous beeping after 3 minutes unresolved.
-- Live debug stream showing:
-  - Person/face/mouth/bottle boxes.
-  - Bottle source (`custom` vs `none`).
-  - Drink-decision telemetry (`contact_seconds`, `drink_detected`, cooldown).
-- Custom bottle model support for your bottle.
+- Menu bar app with hydration count, manual drink confirmation, and a 30-minute manual pause.
+- Waits for the configured reminder interval before opening the camera or loading the ML runtime.
+- Shows a red `Drink water` prompt and runs the bottle model at 5 FPS for up to 60 seconds.
+- Treats bottle detection in at least 5 of the last 10 sampled frames as a completed reminder, then waits for the regular interval.
+- If the threshold is not met within 60 seconds, stops detection, keeps the red prompt visible, and retries after a 10-minute snooze.
+- Prefers Apple MPS inference when available and falls back to CPU if MPS inference fails.
 
 ## Setup
 
@@ -37,7 +28,7 @@ source .venv/bin/activate
 python -m app.main
 ```
 
-Grant Camera permission on first launch.
+Grant Camera permission when the first scheduled bottle check opens the camera.
 
 ## Build macOS App
 
@@ -56,21 +47,17 @@ Expected output:
 
 Edit `/Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye/config/defaults.yaml`.
 
-Key values:
+Key values in `config/defaults.yaml`:
 
-- `alert_after_minutes: 1` (testing profile)
-- `presence_absent_after_seconds: 10.0`
-- `presence_person_min_area_ratio: 0.06`
-- `presence_person_center_margin: 0.20`
-- `person_model_path: yolov8n.pt`
+- `reminder_interval_minutes: 30.0`
+- `detection_window_seconds: 60.0`
+- `detection_snooze_minutes: 10.0`
+- `fps: 5`
+- `bottle_detection_window_frames: 10`
+- `bottle_detection_threshold: 0.5`
 - `bottle_model_path: models/bottle_v3/weights/best.pt`
 - `bottle_class_id: 0`
 - `bottle_confidence: 0.80`
-- `mouth_expand_ratio: 0.15`
-- `mouth_memory_seconds: 2.5`
-- `drink_hold_seconds: 1.0`
-- `drink_cooldown_minutes: 0.0833` (5 seconds, testing)
-- `show_debug_window: true`
 
 ## Fast Bottle Training Workflow
 
@@ -153,6 +140,18 @@ Uninstall:
 ```
 
 ## Resource Optimizations
+
+The Activity Monitor and isolated-model measurements below are historical observations from the previous continuous person-and-bottle detection flow. They are not measurements of the new scheduled bottle-only flow.
+
+#### Scheduled bottle-only flow
+
+Activity Monitor observations on 2026-10-20 for the scheduled bottle-only flow, with the reminder interval temporarily set to 30 seconds for testing (Python PID 73065):
+
+| Configuration | CPU (% of one core) | GPU | Real memory | Measurement notes |
+| --- | ---: | ---: | ---: | --- |
+| 30-second reminder interval, 5 FPS bottle checks | 3.7–15.0% | 0–5.2% | 62.6–319.2 MB | Seven point-in-time samples over approximately 2.5 minutes; resource use varied as checks started and stopped. These are observed ranges, not averages or process high-water marks. |
+
+The interval was restored to the normal 30-minute default after the test. Activity Monitor's GPU percentage was 0% in four samples and reached 5.2% in one sample; the other two samples were 3.6% and 4.0%.
 
 Activity Monitor observations on 2026-10-20 while camera inference was active on an Apple M1 MacBook Air (macOS 26.3, Python 3.12.6):
 

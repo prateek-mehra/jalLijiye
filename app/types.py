@@ -66,6 +66,11 @@ class AppState:
 
 @dataclass(slots=True)
 class Config:
+    reminder_interval_minutes: float = 30.0
+    detection_window_seconds: float = 60.0
+    detection_snooze_minutes: float = 10.0
+    bottle_detection_window_frames: int = 10
+    bottle_detection_threshold: float = 0.5
     alert_after_minutes: float = 2.0
     daily_hydration_goal: int = 8
     absence_pause_minutes: int = 2
