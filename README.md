@@ -1,12 +1,12 @@
 # JalLijiye
 
-Hydration reminder app for macOS that runs in the menu bar and periodically prompts the user to drink water. During each reminder window, it runs only the custom bottle detector.
+Hydration reminder app for macOS that waits in the background, shows a menu bar prompt when a reminder is due, and runs only the custom bottle detector during active checks.
 
 ## Features
 
-- Menu bar app with hydration count, manual drink confirmation, and a 30-minute manual pause.
+- Hides its menu bar item while waiting; shows the prompt and controls during a reminder or snooze, until hydration is recorded.
 - Waits for the configured reminder interval before opening the camera or loading the ML runtime.
-- Shows a red `Drink water` prompt and runs the bottle model at 5 FPS for up to 60 seconds.
+- Shows a red `Drink water` prompt and runs the bottle model at the configured frame rate for up to 60 seconds.
 - Treats bottle detection in at least 5 of the last 10 sampled frames as a completed reminder, then waits for the regular interval.
 - If the threshold is not met within 60 seconds, stops detection, keeps the red prompt visible, and retries after a 10-minute snooze.
 - Prefers Apple MPS inference when available and falls back to CPU if MPS inference fails.
@@ -58,7 +58,7 @@ Key values in `config/defaults.yaml`:
 - `reminder_interval_minutes: 30.0`
 - `detection_window_seconds: 60.0`
 - `detection_snooze_minutes: 10.0`
-- `fps: 5`
+- `fps: 1` (current low-resource test setting)
 - `bottle_detection_window_frames: 10`
 - `bottle_detection_threshold: 0.5`
 - `bottle_model_path: models/bottle_v3/weights/best.pt`

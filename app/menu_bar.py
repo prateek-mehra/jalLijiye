@@ -16,7 +16,7 @@ except Exception:  # pragma: no cover - optional runtime dependency
     Foundation = None
 
 
-StatusProvider = Callable[[], tuple[str, str]]
+StatusProvider = Callable[[], tuple[str, str, bool]]
 Action = Callable[[], None]
 
 
@@ -51,12 +51,19 @@ class JalLijiyeMenuBar:
             None,
             self.quit_item,
         ]
+        self._status_bar = (
+            AppKit.NSStatusBar.systemStatusBar() if AppKit is not None else None
+        )
+        self._status_item_visible = True
 
         self.timer = rumps.Timer(self._refresh, 0.2)
         self.timer.start()
 
     def _refresh(self, _: object) -> None:
-        title, counter_text = self._get_status()
+        title, counter_text, show_menu_bar = self._get_status()
+        self._set_status_item_visible(show_menu_bar)
+        if not show_menu_bar:
+            return
         self.count_item.title = counter_text
         self._apply_title(title)
 
@@ -71,7 +78,39 @@ class JalLijiyeMenuBar:
         rumps.quit_application()
 
     def run(self) -> None:
+        # rumps creates its status item during startup. Remove it before the
+        # event loop begins; it will be recreated when the first reminder is due.
+        rumps.events.before_start.register(self._hide_initial_status_item)
         self.app.run()
+
+    def _hide_initial_status_item(self) -> None:
+        self._set_status_item_visible(False)
+
+    def _set_status_item_visible(self, visible: bool) -> None:
+        if self._status_item_visible == visible:
+            return
+
+        nsapp = getattr(self.app, "_nsapp", None)
+        if nsapp is None:
+            return
+
+        status_item = getattr(nsapp, "nsstatusitem", None)
+        if visible:
+            if self._status_bar is None:
+                return
+            status_item = self._status_bar.statusItemWithLength_(-1)
+            status_item.setHighlightMode_(True)
+            status_item.setMenu_(self.app.menu._menu)
+            nsapp.nsstatusitem = status_item
+            nsapp.setStatusBarIcon()
+            nsapp.setStatusBarTitle()
+            self._status_item_visible = True
+            return
+
+        if status_item is not None and self._status_bar is not None:
+            self._status_bar.removeStatusItem_(status_item)
+        nsapp.nsstatusitem = None
+        self._status_item_visible = False
 
     def _apply_title(self, title: str) -> None:
         if title == "Drink water" or title.startswith("Next check in:"):

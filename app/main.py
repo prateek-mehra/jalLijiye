@@ -122,7 +122,7 @@ class JalLijiyeController:
             self._active_alert_started_at = None
         logging.info("Manual pause enabled for 30 minutes")
 
-    def get_status(self) -> tuple[str, str]:
+    def get_status(self) -> tuple[str, str, bool]:
         with self._lock:
             snapshot = self.scheduler.snapshot(now=time.monotonic())
             hydration_count = self.hydration_count
@@ -148,7 +148,8 @@ class JalLijiyeController:
         )
 
         progress_title = f"Hydration: {hydration_count}/{hydration_goal}"
-        return title, progress_title
+        show_menu_bar = snapshot.mode in ("MONITORING", "SNOOZED")
+        return title, progress_title, show_menu_bar
 
     def _detector_loop(self) -> None:
         detector_active = False
