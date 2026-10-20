@@ -7,6 +7,7 @@ APP = ["jallijiye_app.py"]
 DATA_FILES = [
     ("config", ["config/defaults.yaml"]),
     ("models/bottle_v3/weights", ["models/bottle_v3/weights/best.pt"]),
+    ("assets/sounds", ["assets/sounds/water_drop.wav"]),
     ("", ["yolov8n.pt"]),
 ]
 

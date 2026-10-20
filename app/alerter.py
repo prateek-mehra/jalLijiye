@@ -3,13 +3,17 @@ from __future__ import annotations
 import subprocess
 import threading
 import time
+from pathlib import Path
 
+from app.paths import resolve_resource_path
 from app.types import AppMode
 
 
 class Alerter:
-    def __init__(self, sound_path: str = "/System/Library/Sounds/Bottle.aiff") -> None:
-        self.sound_path = sound_path
+    def __init__(self, sound_path: str | Path | None = None) -> None:
+        self.sound_path = str(
+            sound_path or resolve_resource_path("assets/sounds/water_drop.wav")
+        )
         self._mode: AppMode | None = None
         self._alert_started_at: float | None = None
         self._last_escalating_beep = 0.0
