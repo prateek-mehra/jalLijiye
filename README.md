@@ -147,17 +147,19 @@ Uninstall:
 
 ## Resource Optimizations
 
-The Activity Monitor and isolated-model measurements below are historical observations from the previous continuous person-and-bottle detection flow. They are not measurements of the new scheduled bottle-only flow.
+The scheduled bottle-only measurements are listed first. The later Activity Monitor and isolated-model measurements are historical observations from the previous continuous person-and-bottle detection flow.
 
 #### Scheduled bottle-only flow
 
-Activity Monitor observations on 2026-10-20 for the scheduled bottle-only flow, with the reminder interval temporarily set to 30 seconds for testing (Python PID 73065):
+Activity Monitor observations on 2026-10-20 for the scheduled bottle-only flow:
 
 | Configuration | CPU (% of one core) | GPU | Real memory | Measurement notes |
 | --- | ---: | ---: | ---: | --- |
+| 30-second reminder interval, 1 FPS bottle checks | 4–11% (reported range) | 0–2% | ~320 MB | User-reported CPU/GPU range and approximate peak RAM during the next test. |
+| 30-second reminder interval, 1 FPS bottle checks | 3.4–111.4% | 0–2.9% | 92.3–329.0 MB | Eight point-in-time Activity Monitor samples of Python PID 79801 over about 3.5 minutes. One sample briefly showed 111.4% CPU; the other samples ranged from 3.4% to 12.0%. These are observed ranges, not averages or process high-water marks. |
 | 30-second reminder interval, 5 FPS bottle checks | 3.7–15.0% | 0–5.2% | 62.6–319.2 MB | Seven point-in-time samples over approximately 2.5 minutes; resource use varied as checks started and stopped. These are observed ranges, not averages or process high-water marks. |
 
-The interval was restored to the normal 30-minute default after the test. Activity Monitor's GPU percentage was 0% in four samples and reached 5.2% in one sample; the other two samples were 3.6% and 4.0%.
+The 5 FPS run's Activity Monitor GPU percentage was 0% in four samples and reached 5.2% in one sample; the other two samples were 3.6% and 4.0%. In the 1 FPS run, our separate Activity Monitor snapshots included one brief 111.4% CPU sample and a 2.9% GPU sample, which differ from the user's reported 4–11% CPU and 0–2% GPU range. Treat these as distinct observations pending another controlled run.
 
 Activity Monitor observations on 2026-10-20 while camera inference was active on an Apple M1 MacBook Air (macOS 26.3, Python 3.12.6):
 
