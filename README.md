@@ -13,37 +13,18 @@ Hydration reminder app for macOS that runs in the menu bar and periodically prom
 
 ## High-Level Design
 
-The app starts as a menu bar process. A scheduler thread waits for the configured interval before it opens the camera or loads the ML runtime. The default interval is 30 minutes.
-
 ```mermaid
 flowchart TD
-    Config["defaults.yaml"] --> Controller["App controller"]
-    Controller --> Menu["Menu bar UI"]
-    Controller --> Scheduler["Reminder scheduler"]
-    Scheduler -->|"Wait configured interval"| Prompt["Show red Drink water prompt"]
-    Prompt --> Detector["Open camera and load bottle model"]
-    Detector --> Frames["Sample frames at up to 5 FPS"]
-    Frames --> Bottle["Bottle-only YOLO inference"]
-    Bottle --> Window["Rolling last 10 results"]
-    Window -->|"At least 5 detections"| Success["Count drink; stop detector"]
-    Window -->|"60 seconds without threshold"| Snooze["Stop detector; snooze 10 minutes"]
-    Snooze -->|"Keep red prompt visible"| Detector
-    Success --> Scheduler
-    Scheduler -->|"Start next interval"| Scheduler
-    Menu -->|"Mark Drink Now / Pause 30m"| Scheduler
-    Detector -->|"MPS when available; CPU fallback"| Bottle
-    Controller --> Logs["Local events log"]
+    Start([App starts in background]) --> Wait["Wait configured interval<br/>(e.g. 30 min)"]
+    Wait --> Check["Show red 'Drink water' prompt<br/>Start camera and bottle model at 5 FPS"]
+    Check --> Sample["Check bottle in each sampled frame<br/>Keep the latest 10 results"]
+    Sample --> Decision{"Bottle detected in at least<br/>5 of the last 10 frames?"}
+    Decision -->|Yes| Success["Stop detection and camera<br/>Wait for configured interval"]
+    Success --> Wait
+    Decision -->|"Not yet, under 1 min"| Sample
+    Decision -->|"No, after 1 min"| Snooze["Stop detection and camera<br/>Snooze for 10 min<br/>Keep red prompt visible"]
+    Snooze -->|"After snooze"| Check
 ```
-
-### Runtime flow
-
-1. The controller loads configuration, starts the menu bar, scheduler, and alert worker. The camera and ML dependencies remain unloaded while waiting.
-2. At the configured interval, the scheduler enters a one-minute monitoring window. The menu bar shows **Drink water** in red; the detector opens the camera and loads only the custom bottle model.
-3. The detector samples at up to 5 FPS. The scheduler keeps the latest 10 inference results; 5 or more bottle detections complete the reminder, increment the hydration count, and close the detector.
-4. If the threshold is not reached within one minute, the detector closes and the app snoozes for 10 minutes. The red prompt stays visible while detection is off; another one-minute check starts after the snooze.
-5. **Mark Drink Now** counts a manual drink and restarts the regular interval. **Pause 30m** postpones the next check by 30 minutes. **Quit** stops the detector and background workers.
-
-While a monitoring window is active, the alert worker can play a sound every 30 seconds. It is silent during the normal wait and snooze. The menu bar also shows the hydration count, and runtime events are written to the local log. MPS is selected when available, with CPU fallback if MPS inference fails.
 
 For the previous continuous person-and-bottle detection architecture, see the [legacy HLD](docs/legacy-hld.md).
 
