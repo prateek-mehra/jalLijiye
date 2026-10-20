@@ -86,6 +86,13 @@ class ReminderScheduler:
         self.monitor_deadline = None
         self._detections.clear()
 
+    def start_immediately(self, now: float) -> None:
+        """Schedule a fresh bottle-check window immediately, such as after wake."""
+        self.mode = "WAITING"
+        self.next_action_at = now
+        self.monitor_deadline = None
+        self._detections.clear()
+
     def snapshot(self, now: float) -> ReminderSnapshot:
         deadline = self.monitor_deadline if self.mode == "MONITORING" else self.next_action_at
         return ReminderSnapshot(

@@ -14,6 +14,7 @@ from app.menu_bar import JalLijiyeMenuBar
 from app.paths import ensure_logs_dir
 from app.reminder_scheduler import ReminderScheduler
 from app.types import Box, DetectionFrame
+from app.wake import SystemWakeObserver
 
 
 def is_reliable_person_presence(
@@ -122,7 +123,16 @@ class JalLijiyeController:
             self._active_alert_started_at = None
         logging.info("Manual pause enabled for 30 minutes")
 
+    def on_system_wake(self) -> None:
+        with self._lock:
+            self.scheduler.start_immediately(now=time.monotonic())
+            self._active_alert_started_at = None
+        logging.info("System woke from sleep; starting a bottle check immediately")
+
     def get_status(self) -> tuple[str, str, bool]:
+        # rumps calls this from its UI timer on the main thread. OpenCV's
+        # macOS window must also be created and pumped from the main thread.
+        self.detector.pump_debug_window()
         with self._lock:
             snapshot = self.scheduler.snapshot(now=time.monotonic())
             hydration_count = self.hydration_count
@@ -225,6 +235,7 @@ class JalLijiyeController:
 def run() -> None:
     controller = JalLijiyeController()
     controller.start()
+    wake_observer = SystemWakeObserver(controller.on_system_wake)
 
     def _shutdown(*_: object) -> None:
         controller.stop()
@@ -239,7 +250,10 @@ def run() -> None:
         on_pause=controller.pause_30_minutes,
         on_quit=controller.quit_app,
     )
-    menu.run()
+    try:
+        menu.run()
+    finally:
+        wake_observer.close()
 
 
 if __name__ == "__main__":

@@ -78,6 +78,9 @@ class BottleOnlyDetector:
         self._inference_device = "cpu"
         self._uses_coreml = False
         self._last_frame_ts = 0.0
+        self._window_name = "JalLijiye Bottle Check"
+        self._debug_lock = threading.Lock()
+        self._pending_debug_frame: Any | None = None
         self.status = DetectorStatus(False, "Waiting for next bottle check")
 
     def start(self) -> None:
@@ -144,19 +147,48 @@ class BottleOnlyDetector:
             logging.exception("Bottle inference failed")
             return None
 
+        detected = False
+        canvas = frame.copy() if self.config.show_debug_window else None
         for result in results or []:
             for box in getattr(result, "boxes", []) or []:
                 try:
                     class_id = int(float(box.cls[0]))
                     confidence = float(box.conf[0])
+                    coords = box.xyxy[0].tolist()
                 except (AttributeError, IndexError, TypeError, ValueError):
                     continue
-                if (
+                accepted = (
                     class_id == self.config.bottle_class_id
                     and confidence >= self.config.bottle_confidence
-                ):
-                    return True
-        return False
+                )
+                detected = detected or accepted
+                if canvas is not None and cv2 is not None and len(coords) >= 4:
+                    x1, y1, x2, y2 = (int(value) for value in coords[:4])
+                    color = (0, 220, 0) if accepted else (0, 165, 255)
+                    cv2.rectangle(canvas, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(canvas, f"bottle {confidence:.2f}", (x1, max(18, y1 - 6)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2)
+        if canvas is not None and cv2 is not None:
+            label = "BOTTLE DETECTED" if detected else "Drink water - bottle not detected"
+            cv2.putText(canvas, label, (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                        (0, 220, 0) if detected else (0, 0, 255), 2)
+            with self._debug_lock:
+                self._pending_debug_frame = canvas
+        return detected
+
+    def pump_debug_window(self) -> None:
+        """Update OpenCV's GUI from the app's main thread (required on macOS)."""
+        if cv2 is None or not self.config.show_debug_window:
+            return
+        with self._debug_lock:
+            frame = self._pending_debug_frame
+            self._pending_debug_frame = None
+        if frame is not None:
+            try:
+                cv2.imshow(self._window_name, frame)
+                cv2.waitKey(1)
+            except Exception:
+                logging.exception("Could not display bottle debug window")
 
     def _predict(self, frame: Any, **options: Any) -> Any:
         if self._uses_coreml:
