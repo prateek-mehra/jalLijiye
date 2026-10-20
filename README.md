@@ -156,9 +156,10 @@ Uninstall:
 
 Activity Monitor observations on 2026-10-20 while camera inference was active on an Apple M1 MacBook Air (macOS 26.3, Python 3.12.6):
 
-| Debug window | CPU (% of one core) | Real memory | Measurement notes |
-| --- | ---: | ---: | --- |
-| On (`show_debug_window: true`) | 138–149% | 214–218 MB | Point-in-time samples during a drinking-action attempt. |
-| Off (`show_debug_window: false`) | 131–136% | 244–306 MB | Two early samples about 20 seconds apart; memory fell between them and had not settled. |
+| Inference backend | Debug window | CPU (% of one core) | GPU | Real memory | Measurement notes |
+| --- | --- | ---: | ---: | ---: | --- |
+| CPU | On (`show_debug_window: true`) | 138–149% | Not recorded | 214–218 MB | Point-in-time samples during a drinking-action attempt. |
+| CPU | Off (`show_debug_window: false`) | 131–136% | Not recorded | 244–306 MB | Two early samples about 20 seconds apart; memory fell between them and had not settled. |
+| MPS | On (`show_debug_window: true`) | 69.7% | 21.6% | 190.3 MB | One Activity Monitor sample during an active camera inference run (Python PID 58140). |
 
-These are preliminary samples from separate runs, not controlled averages or peaks. They do not establish a memory reduction from disabling the debug window. CPU readings above 100% mean the process used more than one core. Activity Monitor did not confirm whether the drinking event was detected.
+These are preliminary samples from separate runs, not controlled averages or peaks. They do not establish a memory reduction from disabling the debug window or a controlled performance improvement from MPS. CPU readings above 100% mean the process used more than one core. Activity Monitor did not confirm whether the drinking event was detected.
