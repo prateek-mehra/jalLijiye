@@ -156,7 +156,9 @@ Resource observations on 2026-10-20 for the scheduled bottle-only flow:
 | Configuration | CPU (% of one core) | GPU | Real memory | Measurement notes |
 | --- | ---: | ---: | ---: | --- |
 | 30-second reminder interval, 1 FPS bottle checks | 4–11% (reported range) | 0–2% | 70–320 MB (reported range) | User-reported CPU, GPU, and RAM ranges during the next test. |
-| 30-second reminder interval, 1 FPS Core ML bottle checks | 0.2–12% (reported range) | 0–0.2% (reported range) | 150–250 MB (reported range) | User-reported CPU, GPU, and RAM observations with the FP16 Core ML model selected. |
+| 30-second reminder interval, 1 FPS Core ML bottle checks | 0.2–12% (reported range) | 0–0.2% (reported range) | 150–250 MB (reported range) | User-reported CPU, GPU, and RAM observations with the 640×640 FP16 Core ML model selected. |
+| 30-second reminder interval, 1 FPS INT8 Core ML bottle checks | 0.2–11.5% | 0–0.3% | 72–96 MB at startup; 305–419 MB during checks | Activity Monitor point-in-time samples of Python PID 10074 over about 2 minutes. The startup samples preceded the higher-memory check samples; these are observed ranges, not averages or process high-water marks. |
+| 30-second reminder interval, 1 FPS 320×320 FP16 Core ML bottle checks | 0.2–10.2% | 0–0.5% | 329.6–353.1 MB | Two Activity Monitor samples of Python PID 12659, about 30 seconds apart. The process was absent in the next sample; these are point-in-time observations, not averages or a high-water mark. |
 | 30-second reminder interval, 5 FPS bottle checks | 3.7–15.0% | 0–5.2% | 62.6–319.2 MB | Seven point-in-time samples over approximately 2.5 minutes; resource use varied as checks started and stopped. These are observed ranges, not averages or process high-water marks. |
 
 The 5 FPS run's Activity Monitor GPU percentage was 0% in four samples and reached 5.2% in one sample; the other two samples were 3.6% and 4.0%.
@@ -170,9 +172,9 @@ On 2026-10-20, the FP16 Core ML export was compared with the PyTorch `.pt` model
 | PyTorch `.pt` | MPS | 24.8 ms/frame | 2.26 s | 69.1% | 492.4 MB | 494.5 MB | 92/132 |
 | FP16 Core ML `.mlpackage` | Core ML default compute units | 21.5 ms/frame | 3.02 s | 106.4% | 346.5 MB | 372.9 MB | 91/132 |
 
-The backends agreed on bottle presence for 131 of 132 frames (99.2%). In this replay, Core ML was about 13% faster and used about 30% less RSS after measurement, while process CPU time was about 34% higher. These are isolated inference-process measurements, not full-app measurements; Core ML's GPU usage was not recorded separately. The app's current configuration uses the `.mlpackage` model for bottle detection; the `.pt` weights remain available at `models/bottle_v3/weights/best.pt`.
+The backends agreed on bottle presence for 131 of 132 frames (99.2%). In this replay, Core ML was about 13% faster and used about 30% less RSS after measurement, while process CPU time was about 34% higher. These are isolated inference-process measurements, not full-app measurements; Core ML's GPU usage was not recorded separately. Those Core ML results are for the 640×640 FP16 package at `models/bottle_v3/weights/best.mlpackage`. The INT8 and 320×320 FP16 full-app observations are listed in the scheduled-flow table above. The 320×320 FP16 detection quality still needs to be measured. The `.pt` weights remain available at `models/bottle_v3/weights/best.pt`.
 
-The active `.mlpackage` stores its model weight tensors as Core ML `FLOAT16`. The earlier FP32 description was incorrect: the package was exported as an ML Program, whose conversion used FP16 weights by default.
+The original 640×640 `.mlpackage` stores its model weights as Core ML `FLOAT16`. The INT8 package uses symmetric, per-channel 8-bit weight quantization. Its full-app resource readings appear in the scheduled-flow table; they do not by themselves establish that INT8 caused the higher RAM readings. Core ML keeps inference computations in floating point for this weight-only quantization, and the app still loads its camera and Python inference runtime. The 320×320 experimental package was exported from the `.pt` weights with `imgsz=320` and `half=True`; its model input is 320×320 and its weights are FP16. The earlier FP32 description was incorrect: the original package was exported as an ML Program, whose conversion used FP16 weights by default.
 
 Activity Monitor observations on 2026-10-20 while camera inference was active on an Apple M1 MacBook Air (macOS 26.3, Python 3.12.6):
 
