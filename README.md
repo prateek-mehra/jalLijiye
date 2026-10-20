@@ -6,6 +6,7 @@ Hydration reminder app for macOS that waits in the background, shows a menu bar 
 
 - Hides its menu bar item while waiting; shows the prompt and controls during a reminder or snooze, until hydration is recorded.
 - Waits for the configured reminder interval before opening the camera or loading the ML runtime.
+- Starts a fresh bottle-check window when macOS wakes from system sleep.
 - Shows a red `Drink water` prompt and runs the bottle model at the configured frame rate for up to 60 seconds.
 - Treats bottle detection in at least 5 of the last 10 sampled frames as a completed reminder, then waits for the regular interval.
 - If the threshold is not met within 60 seconds, stops detection, keeps the red prompt visible, and retries after a 10-minute snooze.
@@ -61,9 +62,9 @@ Key values in `config/defaults.yaml`:
 - `fps: 1` (current low-resource test setting)
 - `bottle_detection_window_frames: 10`
 - `bottle_detection_threshold: 0.5`
-- `bottle_model_path: models/bottle_v3/weights/best.mlpackage` (FP16 Core ML bottle model)
+- `bottle_model_path: models/bottle_checkered/weights/best.pt` (checkered-bottle YOLOv8n test model)
 - `bottle_class_id: 0`
-- `bottle_confidence: 0.80`
+- `bottle_confidence: 0.25` (temporary test threshold for the checkered-bottle model)
 
 ## Fast Bottle Training Workflow
 
@@ -162,6 +163,17 @@ Resource observations on 2026-10-20 for the scheduled bottle-only flow:
 | 30-second reminder interval, 5 FPS bottle checks | 3.7–15.0% | 0–5.2% | 62.6–319.2 MB | Seven point-in-time samples over approximately 2.5 minutes; resource use varied as checks started and stopped. These are observed ranges, not averages or process high-water marks. |
 
 The 5 FPS run's Activity Monitor GPU percentage was 0% in four samples and reached 5.2% in one sample; the other two samples were 3.6% and 4.0%.
+
+#### Checkered-bottle model comparison
+
+On 2026-10-20, the custom bottle detector was trained separately with YOLOv8n and YOLO26n using the same 92-frame dataset annotated with MLX SAM 3. The split was grouped by time to reduce adjacent-frame leakage: 60 train, 16 validation, and 16 test frames. Training used 640×640 images, batch size 4, MPS, and seed 42. YOLOv8n trained for 15 epochs (best epoch 8); YOLO26n stopped after 12 epochs due to early stopping (best epoch 5).
+
+| Model | Test precision | Test recall | Test mAP50 | Test mAP50–95 | Isolated mean inference | CPU (% of one core) | Peak RSS | Positive test frames detected at confidence 0.25 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Checkered YOLOv8n | 1.00 | 1.00 | 0.995 | 0.799 | 22.315 ms/frame | 77.5% | 538.4 MB | 14/14 |
+| Checkered YOLO26n | 0.00 | 0.00 | 0.000 | 0.000 | 23.008 ms/frame | 96.8% | 573.6 MB | 0/14 |
+
+Isolated resource profiling used MPS and ran the same 16 test images per model; its CPU and RSS readings are for separate profiling processes, not the whole app. The YOLOv8n model is selected in the app for a user test run, with confidence temporarily set to 0.25. At confidence 0.50 it detected 10/14 positive frames, and at the previous app threshold of 0.80 it detected 4/14; YOLO26n detected 0/14 at each tested threshold. The test contains 16 frames from one short clip in one setting, including only two negative frames, so these results are preliminary and do not establish performance across bottles, backgrounds, or lighting. YOLO26n retraining without early stopping is deferred until requested.
 
 #### Bottle model backend comparison
 

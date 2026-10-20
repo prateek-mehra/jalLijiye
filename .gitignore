@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+.venv-sam3/
+.sam3-uv-cache/
 .cache/
 .env
 .DS_Store
@@ -9,6 +11,7 @@ logs/*
 !logs/.gitkeep
 dist/
 yolov8n.pt
+yolo26n.pt
 data/raw_videos/
 data/raw_video/
 data/bottle/pink bottle.coco/
@@ -38,4 +41,12 @@ models/*
 !models/bottle_v3/
 !models/bottle_v3/weights/
 !models/bottle_v3/weights/best.pt
+!models/bottle_v3/weights/best_int8.mlpackage/
+!models/bottle_v3/weights/best_int8.mlpackage/**
+!models/bottle_v3/weights/best_320_fp16.mlpackage/
+!models/bottle_v3/weights/best_320_fp16.mlpackage/**
+!models/bottle_checkered/
+!models/bottle_checkered/weights/
+!models/bottle_checkered/weights/best.pt
+data/bottle_checkered/
 runs/

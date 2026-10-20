@@ -4,7 +4,7 @@ from setuptools import setup
 APP = ["jallijiye_app.py"]
 DATA_FILES = [
     ("config", ["config/defaults.yaml"]),
-    ("models/bottle_v3/weights", ["models/bottle_v3/weights/best.pt"]),
+    ("models/bottle_checkered/weights", ["models/bottle_checkered/weights/best.pt"]),
     ("", ["yolov8n.pt"]),
 ]
 
