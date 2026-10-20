@@ -50,5 +50,8 @@ models/*
 !models/bottle_checkered/weights/best.pt
 !models/bottle_checkered/weights/best.mlpackage/
 !models/bottle_checkered/weights/best.mlpackage/**
+!models/checkered_yolo26n_no_early_stop/
+!models/checkered_yolo26n_no_early_stop/weights/
+!models/checkered_yolo26n_no_early_stop/weights/best.pt
 data/bottle_checkered/
 runs/
