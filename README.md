@@ -152,6 +152,13 @@ Uninstall:
 ./scripts/autostart_macos.sh uninstall
 ```
 
-## Runtime Baseline
+## Resource Optimizations
 
-On 2026-10-20, while running with camera inference active on an Apple M1 MacBook Air (macOS 26.3, Python 3.12.6), Activity Monitor showed JalLijiye using **138–149% CPU** and **214–218 MB real memory**. These are point-in-time samples during a drinking-action attempt, not interval averages or peaks. Activity Monitor did not confirm whether the drinking event was detected.
+Activity Monitor observations on 2026-10-20 while camera inference was active on an Apple M1 MacBook Air (macOS 26.3, Python 3.12.6):
+
+| Debug window | CPU (% of one core) | Real memory | Measurement notes |
+| --- | ---: | ---: | --- |
+| On (`show_debug_window: true`) | 138–149% | 214–218 MB | Point-in-time samples during a drinking-action attempt. |
+| Off (`show_debug_window: false`) | 131–136% | 244–306 MB | Two early samples about 20 seconds apart; memory fell between them and had not settled. |
+
+These are preliminary samples from separate runs, not controlled averages or peaks. They do not establish a memory reduction from disabling the debug window. CPU readings above 100% mean the process used more than one core. Activity Monitor did not confirm whether the drinking event was detected.
