@@ -53,13 +53,6 @@ Expected output:
 
 ## Config
 
-The WFH calendar follows the supplied Week 43–50 table as a repeating six-week
-cycle, anchored at ISO Week 43 of 2026 as Mod Week 5. Checks run on Tuesdays
-and Thursdays for Mod Weeks 1 and 3, only Tuesday for Mod Week 4, and Monday,
-Wednesday, and Friday for Mod Weeks 2, 5, and 6. The calendar uses the Mac's
-local date and time. On non-WFH days the detector stays stopped, and checks
-resume at midnight on the next WFH day.
-
 Edit `/Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye/config/defaults.yaml`.
 
 Key values in `config/defaults.yaml`:
