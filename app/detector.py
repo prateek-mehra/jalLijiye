@@ -76,6 +76,7 @@ class BottleOnlyDetector:
         self._cap: Any | None = None
         self._model: Any | None = None
         self._inference_device = "cpu"
+        self._uses_coreml = False
         self._last_frame_ts = 0.0
         self.status = DetectorStatus(False, "Waiting for next bottle check")
 
@@ -102,8 +103,11 @@ class BottleOnlyDetector:
                 self.status = DetectorStatus(False, f"Bottle model missing: {bottle_path}")
                 return
 
-            self._model = YOLO(str(bottle_path))
-            self._inference_device = _select_inference_device()
+            self._uses_coreml = bottle_path.suffix.lower() == ".mlpackage"
+            self._model = YOLO(str(bottle_path), task="detect")
+            self._inference_device = (
+                "coreml-default" if self._uses_coreml else _select_inference_device()
+            )
             self._last_frame_ts = 0.0
             self.status = DetectorStatus(True, f"Bottle check active; device={self._inference_device}")
             logging.info("Bottle check started; inference device=%s", self._inference_device)
@@ -155,6 +159,9 @@ class BottleOnlyDetector:
         return False
 
     def _predict(self, frame: Any, **options: Any) -> Any:
+        if self._uses_coreml:
+            return self._model.predict(frame, verbose=False, **options)
+
         try:
             return self._model.predict(
                 frame,
@@ -176,6 +183,7 @@ class BottleOnlyDetector:
             self._cap.release()
             self._cap = None
         self._model = None
+        self._uses_coreml = False
         if torch is not None and self._inference_device == "mps":
             try:
                 torch.mps.empty_cache()
@@ -194,6 +202,7 @@ class VisionDetector:
         self._cap: Any | None = None
         self._person_model: Any | None = None
         self._bottle_model: Any | None = None
+        self._bottle_uses_coreml = False
         self._inference_device = _select_inference_device()
         self._face_detector: Any | None = None
         self._last_frame_ts: float = 0.0
@@ -229,7 +238,8 @@ class VisionDetector:
             bottle_path = Path(self.config.bottle_model_path)
             if bottle_path.exists():
                 try:
-                    self._bottle_model = YOLO(str(bottle_path))
+                    self._bottle_uses_coreml = bottle_path.suffix.lower() == ".mlpackage"
+                    self._bottle_model = YOLO(str(bottle_path), task="detect")
                 except Exception as exc:  # pragma: no cover - runtime safety path
                     bottle_model_error = f"custom bottle model load failed: {exc}"
             else:
@@ -329,6 +339,9 @@ class VisionDetector:
         )
 
     def _predict(self, model: Any, frame: Any, **options: Any) -> Any:
+        if model is self._bottle_model and self._bottle_uses_coreml:
+            return model.predict(frame, verbose=False, **options)
+
         try:
             return model.predict(
                 frame,

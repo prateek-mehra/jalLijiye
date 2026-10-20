@@ -6,5 +6,5 @@ bottle_detection_threshold: 0.5
 daily_hydration_goal: 8
 fps: 1
 bottle_confidence: 0.80
-bottle_model_path: models/bottle_v3/weights/best.pt
+bottle_model_path: models/bottle_v3/weights/best.mlpackage
 bottle_class_id: 0
