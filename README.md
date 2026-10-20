@@ -160,6 +160,17 @@ Resource observations on 2026-10-20 for the scheduled bottle-only flow:
 
 The 5 FPS run's Activity Monitor GPU percentage was 0% in four samples and reached 5.2% in one sample; the other two samples were 3.6% and 4.0%.
 
+#### Bottle model backend comparison
+
+On 2026-10-20, the FP32 Core ML export was compared with the PyTorch `.pt` model using the same 132 measured frames. The original live-capture frames were no longer available, so this replay used 132 frames sampled at approximately 5 FPS from the first 30 seconds of `data/raw_video/drinking_20260228_170214.mp4`. Each run used 5 warm-up frames before measurement, confidence 0.80, and bottle class 0.
+
+| Model/backend | Compute device | Mean inference time | CPU time (132 frames) | CPU (% of one core) | RSS after measurement | Peak process RSS | Frames with bottle detected |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| PyTorch `.pt` | MPS | 24.8 ms/frame | 2.26 s | 69.1% | 492.4 MB | 494.5 MB | 92/132 |
+| FP32 Core ML `.mlpackage` | Core ML default compute units | 21.5 ms/frame | 3.02 s | 106.4% | 346.5 MB | 372.9 MB | 91/132 |
+
+The backends agreed on bottle presence for 131 of 132 frames (99.2%). In this replay, Core ML was about 13% faster and used about 30% less RSS after measurement, while process CPU time was about 34% higher. These are isolated inference-process measurements, not full-app measurements; Core ML's GPU usage was not recorded separately. The app continues to use the `.pt` model. The `.mlpackage` export is available at `models/bottle_v3/weights/best.mlpackage`.
+
 Activity Monitor observations on 2026-10-20 while camera inference was active on an Apple M1 MacBook Air (macOS 26.3, Python 3.12.6):
 
 | Inference backend | Debug window | CPU (% of one core) | GPU | Real memory | Measurement notes |
