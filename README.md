@@ -7,6 +7,7 @@ Hydration reminder app for macOS that waits in the background, shows a menu bar 
 - Hides its menu bar item while waiting; shows the prompt and controls during a reminder or snooze, until hydration is recorded.
 - Waits for the configured reminder interval before opening the camera or loading the ML runtime.
 - Starts a fresh bottle-check window when macOS wakes from system sleep.
+- Runs scheduled bottle checks only on WFH weekdays from the six-week team rotation; days listing Data-Tech stay idle.
 - Shows a red `Drink water` prompt and runs the bottle model at the configured frame rate for up to 60 seconds.
 - Treats bottle detection in at least 5 of the last 10 sampled frames as a completed reminder, then waits for the regular interval.
 - If the threshold is not met within 60 seconds, stops detection, keeps the red prompt visible, and retries after a 10-minute snooze.
@@ -51,6 +52,13 @@ Expected output:
 - `dist/JalLijiye.app`
 
 ## Config
+
+The WFH calendar follows the supplied Week 43–50 table as a repeating six-week
+cycle, anchored at ISO Week 43 of 2026 as Mod Week 5. Checks run on Tuesdays
+and Thursdays for Mod Weeks 1 and 3, only Tuesday for Mod Week 4, and Monday,
+Wednesday, and Friday for Mod Weeks 2, 5, and 6. The calendar uses the Mac's
+local date and time. On non-WFH days the detector stays stopped, and checks
+resume at midnight on the next WFH day.
 
 Edit `/Users/prateek/Downloads/_Projects/Personal/codex/jalLijiye/config/defaults.yaml`.
 

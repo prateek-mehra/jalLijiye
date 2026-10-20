@@ -7,6 +7,7 @@ import subprocess
 import signal
 import threading
 import time
+from datetime import datetime
 
 from app.alerter import Alerter
 from app.config import load_config
@@ -166,7 +167,7 @@ class JalLijiyeController:
         while not self._stop.is_set():
             now = time.monotonic()
             with self._lock:
-                transition = self.scheduler.advance(now)
+                transition = self.scheduler.advance(now, wall_now=datetime.now().astimezone())
                 mode = self.scheduler.mode
 
             if transition == "start":
