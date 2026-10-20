@@ -62,7 +62,7 @@ Key values in `config/defaults.yaml`:
 - `fps: 1` (current low-resource test setting)
 - `bottle_detection_window_frames: 10`
 - `bottle_detection_threshold: 0.5`
-- `bottle_model_path: models/bottle_checkered/weights/best.pt` (checkered-bottle YOLOv8n test model)
+- `bottle_model_path: models/bottle_checkered/weights/best.mlpackage` (checkered-bottle YOLOv8n Core ML FP16 export, 640×640)
 - `bottle_class_id: 0`
 - `bottle_confidence: 0.25` (temporary test threshold for the checkered-bottle model)
 
@@ -173,7 +173,7 @@ On 2026-10-20, the custom bottle detector was trained separately with YOLOv8n an
 | Checkered YOLOv8n | 1.00 | 1.00 | 0.995 | 0.799 | 22.315 ms/frame | 77.5% | 538.4 MB | 14/14 |
 | Checkered YOLO26n | 0.00 | 0.00 | 0.000 | 0.000 | 23.008 ms/frame | 96.8% | 573.6 MB | 0/14 |
 
-Isolated resource profiling used MPS and ran the same 16 test images per model; its CPU and RSS readings are for separate profiling processes, not the whole app. The YOLOv8n model is selected in the app for a user test run, with confidence temporarily set to 0.25. At confidence 0.50 it detected 10/14 positive frames, and at the previous app threshold of 0.80 it detected 4/14; YOLO26n detected 0/14 at each tested threshold. The test contains 16 frames from one short clip in one setting, including only two negative frames, so these results are preliminary and do not establish performance across bottles, backgrounds, or lighting. YOLO26n retraining without early stopping is deferred until requested.
+Isolated resource profiling used MPS and ran the same 16 test images per model; its CPU and RSS readings are for separate profiling processes, not the whole app. The app is configured to use the 640×640 FP16 Core ML export at `models/bottle_checkered/weights/best.mlpackage`, converted from the YOLOv8n checkpoint. Confidence is temporarily set to 0.25 based on the `.pt` test results. Package-specific accuracy and resource measurements are still pending; the isolated CPU/RSS/inference figures above were measured on the `.pt` models with MPS, not on these Core ML exports. At confidence 0.50 it detected 10/14 positive frames, and at the previous app threshold of 0.80 it detected 4/14; YOLO26n detected 0/14 at each tested threshold. The test contains 16 frames from one short clip in one setting, including only two negative frames, so these results are preliminary and do not establish performance across bottles, backgrounds, or lighting. YOLO26n retraining without early stopping is deferred until requested.
 
 #### Bottle model backend comparison
 

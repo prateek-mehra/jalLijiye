@@ -48,5 +48,7 @@ models/*
 !models/bottle_checkered/
 !models/bottle_checkered/weights/
 !models/bottle_checkered/weights/best.pt
+!models/bottle_checkered/weights/best.mlpackage/
+!models/bottle_checkered/weights/best.mlpackage/**
 data/bottle_checkered/
 runs/

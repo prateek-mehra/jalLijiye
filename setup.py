@@ -6,7 +6,15 @@ from setuptools import setup
 APP = ["jallijiye_app.py"]
 DATA_FILES = [
     ("config", ["config/defaults.yaml"]),
-    ("models/bottle_checkered/weights", ["models/bottle_checkered/weights/best.pt"]),
+    ("models/bottle_checkered/weights/best.mlpackage", ["models/bottle_checkered/weights/best.mlpackage/Manifest.json"]),
+    (
+        "models/bottle_checkered/weights/best.mlpackage/Data/com.apple.CoreML",
+        ["models/bottle_checkered/weights/best.mlpackage/Data/com.apple.CoreML/model.mlmodel"],
+    ),
+    (
+        "models/bottle_checkered/weights/best.mlpackage/Data/com.apple.CoreML/weights",
+        ["models/bottle_checkered/weights/best.mlpackage/Data/com.apple.CoreML/weights/weight.bin"],
+    ),
     ("assets/sounds", ["assets/sounds/water_drop.wav"]),
     ("", ["yolov8n.pt"]),
 ]
