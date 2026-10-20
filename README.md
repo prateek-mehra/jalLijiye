@@ -67,41 +67,90 @@ Key values in `config/defaults.yaml`:
 - `bottle_class_id: 0`
 - `bottle_confidence: 0.25` (temporary test threshold for the checkered-bottle model)
 
-## Fast Bottle Training Workflow
+## Bottle Training Workflow
 
-### 1) Collect videos
+The recent checkered-bottle training used MLX SAM 3 to draft labels, reviewed
+those labels from preview images, then split frames in temporal order so
+near-duplicate frames stayed in the same dataset split.
 
-Put your webcam videos in:
-- `data/raw_videos/`
+### 1) Collect and sample video
 
-### 2) Extract frames
-
-```bash
-source .venv/bin/activate
-python scripts/extract_frames.py --input-dir data/raw_videos --output-dir data/bottle/images/raw --sample-every-seconds 1.0
-```
-
-### 3) Annotate
-
-- Annotate only bottle boxes.
-- Save YOLO `.txt` labels in `data/bottle/labels/raw/`.
-- Class id mapping: `0 -> my_bottle`.
-
-### 4) Split dataset
+Put short webcam videos in `data/raw_videos/`, then extract one frame per second
+(up to 80 frames per video):
 
 ```bash
 source .venv/bin/activate
-python scripts/split_dataset.py --images-raw data/bottle/images/raw --labels-raw data/bottle/labels/raw --out-root data/bottle --train-ratio 0.8
+python scripts/extract_frames.py \
+  --input-dir data/raw_videos \
+  --output-dir data/bottle_checkered/images/raw \
+  --sample-every-seconds 1.0
 ```
 
-### 5) Train + validate
+### 2) Draft YOLO labels with MLX SAM 3
+
+Use the Apple Silicon MLX environment (`.venv-sam3`) with `mlx-vlm` installed.
+The script uses `mlx-community/sam3-4bit` and prompts for a black-and-white
+checkered bottle or sipper by default. It writes class-0 YOLO labels and
+annotated previews:
 
 ```bash
-bash scripts/train_bottle_model.sh
+source .venv-sam3/bin/activate
+python scripts/annotate_with_mlx_sam3.py \
+  --images data/bottle_checkered/images/raw \
+  --labels data/bottle_checkered/labels/raw \
+  --previews data/bottle_checkered/previews \
+  --skip-existing
 ```
 
-Expected output model:
-- `models/bottle_v1/weights/best.pt`
+Review the images under `data/bottle_checkered/previews/` and correct the
+matching `.txt` files in `data/bottle_checkered/labels/raw/`. Keep only the
+bottle box. A blank label file means the frame is a negative example; make sure
+SAM 3 misses and false detections are corrected before training.
+
+### 3) Make time-ordered train, validation, and test splits
+
+Return to the main project environment and run:
+
+```bash
+source .venv/bin/activate
+python scripts/prepare_checkered_dataset.py --root data/bottle_checkered
+```
+
+This creates contiguous 65% / 17.5% / 17.5% train, validation, and test splits
+and `data/bottle_checkered/data.yaml`. For the recent 92-frame dataset, that was
+60 train, 16 validation, and 16 test frames.
+
+### 4) Train and evaluate
+
+To train and test both YOLOv8n and YOLO26n using the comparison script:
+
+```bash
+bash scripts/train_checkered_bottle_comparison.sh
+```
+
+That script uses 640-pixel images, batch size 4, MPS, seed 42, and early
+stopping. The latest YOLO26n run instead disabled early stopping and completed
+all 30 epochs. To reproduce that run:
+
+```bash
+source .venv/bin/activate
+yolo detect train \
+  model=yolo26n.pt \
+  data=data/bottle_checkered/data.yaml \
+  epochs=30 imgsz=640 batch=4 device=mps workers=0 patience=0 \
+  seed=42 optimizer=AdamW lr0=0.001 lrf=0.01 weight_decay=0.0005 \
+  project=runs/detect/checkered_bottle_comparison \
+  name=yolo26n_batch4_no_early_stop_mps
+```
+
+Evaluate the selected checkpoint on the held-out test split with:
+
+```bash
+yolo detect val \
+  model=runs/detect/checkered_bottle_comparison/yolo26n_batch4_no_early_stop_mps/weights/best.pt \
+  data=data/bottle_checkered/data.yaml split=test \
+  imgsz=640 batch=4 device=mps conf=0.25 plots=True
+```
 
 ## Tests
 
