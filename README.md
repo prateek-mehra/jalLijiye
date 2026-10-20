@@ -13,18 +13,7 @@ Hydration reminder app for macOS that runs in the menu bar and periodically prom
 
 ## High-Level Design
 
-```mermaid
-flowchart TD
-    Start([App starts in background]) --> Wait["Wait configured interval<br/>(e.g. 30 min)"]
-    Wait --> Check["Show red 'Drink water' prompt<br/>Start camera and bottle model at 5 FPS"]
-    Check --> Sample["Check bottle in each sampled frame<br/>Keep the latest 10 results"]
-    Sample --> Decision{"Bottle detected in at least<br/>5 of the last 10 frames?"}
-    Decision -->|Yes| Success["Stop detection and camera<br/>Wait for configured interval"]
-    Success --> Wait
-    Decision -->|"Not yet, under 1 min"| Sample
-    Decision -->|"No, after 1 min"| Snooze["Stop detection and camera<br/>Snooze for 10 min<br/>Keep red prompt visible"]
-    Snooze -->|"After snooze"| Check
-```
+![JalLijiye reminder flow](docs/images/reminder-flow.png)
 
 For the previous continuous person-and-bottle detection architecture, see the [legacy HLD](docs/legacy-hld.md).
 
