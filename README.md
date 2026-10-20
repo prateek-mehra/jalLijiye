@@ -156,7 +156,7 @@ Resource observations on 2026-10-20 for the scheduled bottle-only flow:
 | Configuration | CPU (% of one core) | GPU | Real memory | Measurement notes |
 | --- | ---: | ---: | ---: | --- |
 | 30-second reminder interval, 1 FPS bottle checks | 4–11% (reported range) | 0–2% | 70–320 MB (reported range) | User-reported CPU, GPU, and RAM ranges during the next test. |
-| 30-second reminder interval, 1 FPS Core ML bottle checks | 0.2–12% (reported range) | 0–2% (reported range) | 150–250 MB (reported range) | User-reported CPU, GPU, and RAM observations with the FP32 Core ML model selected. |
+| 30-second reminder interval, 1 FPS Core ML bottle checks | 0.2–12% (reported range) | 0–0.2% (reported range) | 150–250 MB (reported range) | User-reported CPU, GPU, and RAM observations with the FP32 Core ML model selected. |
 | 30-second reminder interval, 5 FPS bottle checks | 3.7–15.0% | 0–5.2% | 62.6–319.2 MB | Seven point-in-time samples over approximately 2.5 minutes; resource use varied as checks started and stopped. These are observed ranges, not averages or process high-water marks. |
 
 The 5 FPS run's Activity Monitor GPU percentage was 0% in four samples and reached 5.2% in one sample; the other two samples were 3.6% and 4.0%.
